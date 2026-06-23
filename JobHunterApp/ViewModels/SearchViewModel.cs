@@ -13,7 +13,8 @@ public partial class SearchViewModel : ObservableObject
     [ObservableProperty] private bool   _useIndeed      = true;
     [ObservableProperty] private int    _minScore       = 6;
     [ObservableProperty] private int    _maxJobsPerSite = 20;
-    [ObservableProperty] private bool   _easyApplyOnly  = true;
+    [ObservableProperty] private bool   _linkedInEasyApplyOnly = true;
+    [ObservableProperty] private bool   _indeedApplyOnly       = true;
 
     public event Action<SearchConfig>? StartRequested;
 
@@ -33,9 +34,10 @@ public partial class SearchViewModel : ObservableObject
             Location       = Location.Trim(),
             Keywords       = Keywords.Trim(),
             Sites          = sites,
-            MinScore       = MinScore,
-            MaxJobsPerSite = MaxJobsPerSite,
-            EasyApplyOnly  = EasyApplyOnly
+            MinScore              = MinScore,
+            MaxJobsPerSite        = MaxJobsPerSite,
+            LinkedInEasyApplyOnly = LinkedInEasyApplyOnly,
+            IndeedApplyOnly       = IndeedApplyOnly
         });
     }
 }

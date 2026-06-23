@@ -36,7 +36,7 @@ public static class IndeedScraper
                     await page.WaitForTimeoutAsync(1_200);
                     var job = await ExtractJobAsync(page, i);
                     if (job is null) continue;
-                    if (config.EasyApplyOnly && !job.IsEasyApply) continue;
+                    if (config.IndeedApplyOnly && !IsIndeedApply(job)) continue;
                     jobs.Add(job);
                     log.Report($"Indeed: scraped {jobs.Count} job(s)…");
                 }
@@ -56,6 +56,9 @@ public static class IndeedScraper
 
         return jobs;
     }
+
+    /// Returns true when the job shows the Indeed Apply button (apply without leaving Indeed).
+    private static bool IsIndeedApply(JobListing job) => job.IsEasyApply;
 
     private static string BuildUrl(SearchConfig c)
     {

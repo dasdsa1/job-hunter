@@ -47,7 +47,7 @@ public static class LinkedInScraper
                     await page.WaitForTimeoutAsync(1_200);
                     var job = await ExtractJobAsync(page, i.ToString());
                     if (job is null) continue;
-                    if (config.EasyApplyOnly && !job.IsEasyApply) continue;
+                    if (config.LinkedInEasyApplyOnly && !IsEasyApply(job)) continue;
                     jobs.Add(job);
                     log.Report($"LinkedIn: scraped {jobs.Count} job(s)…");
                 }
@@ -68,11 +68,14 @@ public static class LinkedInScraper
         return jobs;
     }
 
+    /// Returns true when the job has the LinkedIn Easy Apply button (one-click in-platform apply).
+    private static bool IsEasyApply(JobListing job) => job.IsEasyApply;
+
     private static string BuildUrl(SearchConfig c)
     {
         var kw     = string.Join(" ", new[] { c.JobTitle, c.Keywords }.Where(s => !string.IsNullOrWhiteSpace(s)));
         var query  = $"keywords={Uri.EscapeDataString(kw)}&location={Uri.EscapeDataString(c.Location)}";
-        if (c.EasyApplyOnly) query += "&f_LF=f_AL";
+        if (c.LinkedInEasyApplyOnly) query += "&f_LF=f_AL";
         return $"https://www.linkedin.com/jobs/search/?{query}";
     }
 

@@ -21,7 +21,8 @@
                     <TextBlock Text="Job title" Foreground="{StaticResource TextSecondaryBrush}"
                                FontSize="11" Margin="0,0,0,4"/>
                     <TextBox Text="{Binding JobTitle, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,0,12"/>
+                             Margin="0,0,0,12"
+                             ToolTip="The role you are looking for, e.g. 'Software Engineer' or 'Product Manager'"/>
 
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
@@ -32,24 +33,38 @@
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="Location" Foreground="{StaticResource TextSecondaryBrush}"
                                        FontSize="11" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding Location, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBox Text="{Binding Location, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="City, country, or 'Remote'. Used to filter job results on each site."/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="Keywords (optional)" Foreground="{StaticResource TextSecondaryBrush}"
                                        FontSize="11" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding Keywords, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBox Text="{Binding Keywords, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Extra words added to the search query, e.g. 'React TypeScript'. Leave blank to search by job title only."/>
                         </StackPanel>
                     </Grid>
 
+                    <!-- Sites -->
                     <TextBlock Text="Sites" Foreground="{StaticResource TextSecondaryBrush}"
                                FontSize="11" Margin="0,0,0,8"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                        <CheckBox Content="LinkedIn" IsChecked="{Binding UseLinkedIn}" Margin="0,0,20,0"/>
-                        <CheckBox Content="Indeed"   IsChecked="{Binding UseIndeed}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <CheckBox Content="LinkedIn" IsChecked="{Binding UseLinkedIn}" Margin="0,0,20,0"
+                                  ToolTip="Scrape job listings from LinkedIn Jobs."/>
+                        <CheckBox Content="Indeed" IsChecked="{Binding UseIndeed}"
+                                  ToolTip="Scrape job listings from Indeed."/>
                     </StackPanel>
 
-                    <CheckBox Content="Easy Apply / Indeed Apply jobs only"
-                              IsChecked="{Binding EasyApplyOnly}" Margin="0,0,0,16"/>
+                    <!-- Quick-apply filters -->
+                    <TextBlock Text="Quick-apply filters" Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="11" Margin="0,0,0,8"/>
+                    <CheckBox Content="LinkedIn Easy Apply only"
+                              IsChecked="{Binding LinkedInEasyApplyOnly}"
+                              Margin="0,0,0,8"
+                              ToolTip="Only include LinkedIn jobs that have the Easy Apply button. These are applied to entirely inside LinkedIn — no external site redirect."/>
+                    <CheckBox Content="Indeed Apply only"
+                              IsChecked="{Binding IndeedApplyOnly}"
+                              Margin="0,0,0,4"
+                              ToolTip="Only include Indeed jobs that support Indeed Apply. These let you submit your resume directly on Indeed without leaving the site."/>
                 </StackPanel>
             </Border>
 
@@ -67,20 +82,20 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <DockPanel Margin="0,0,0,4">
-                                <TextBlock Text="{Binding MinScore, StringFormat='Min score: {0}/10'}"
-                                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"/>
-                            </DockPanel>
+                            <TextBlock Text="{Binding MinScore, StringFormat='Min score: {0}/10'}"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11" Margin="0,0,0,4"/>
                             <Slider Minimum="1" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True"
-                                    Value="{Binding MinScore}"/>
+                                    Value="{Binding MinScore}"
+                                    ToolTip="Jobs scored below this threshold by the AI are hidden from results. Higher = stricter filter."/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
-                            <DockPanel Margin="0,0,0,4">
-                                <TextBlock Text="{Binding MaxJobsPerSite, StringFormat='Max jobs/site: {0}'}"
-                                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"/>
-                            </DockPanel>
+                            <TextBlock Text="{Binding MaxJobsPerSite, StringFormat='Max jobs/site: {0}'}"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11" Margin="0,0,0,4"/>
                             <Slider Minimum="5" Maximum="50" TickFrequency="5" IsSnapToTickEnabled="True"
-                                    Value="{Binding MaxJobsPerSite}"/>
+                                    Value="{Binding MaxJobsPerSite}"
+                                    ToolTip="Maximum number of job listings to scrape from each site per run. Higher values take longer but give more results."/>
                         </StackPanel>
                     </Grid>
                 </StackPanel>
@@ -88,7 +103,8 @@
 
             <Button Content="Start Job Hunt →" Command="{Binding StartCommand}"
                     Style="{StaticResource SuccessButton}" Padding="24,12" FontSize="15"
-                    HorizontalAlignment="Left"/>
+                    HorizontalAlignment="Left"
+                    ToolTip="Scrape jobs, score them with AI, then walk you through applying to the ones you select."/>
 
         </StackPanel>
     </ScrollViewer>

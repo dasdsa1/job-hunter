@@ -8,5 +8,6 @@ public class SearchConfig
     public List<string> Sites          { get; set; } = ["linkedin", "indeed"];
     public int          MinScore       { get; set; } = 6;
     public int          MaxJobsPerSite { get; set; } = 20;
-    public bool         EasyApplyOnly  { get; set; } = true;
+    public bool         LinkedInEasyApplyOnly { get; set; } = true;
+    public bool         IndeedApplyOnly       { get; set; } = true;
 }

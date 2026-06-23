@@ -11,11 +11,14 @@ public partial class RunView : UserControl
         InitializeComponent();
         DataContext = vm;
 
-        // Auto-scroll log to bottom on new entries
+        // Use e.NewItems[0] (the added item itself) instead of LogList.Items[^1].
+        // Accessing Items[^1] during CollectionChanged forces a layout/measure pass;
+        // if another Dispatcher.Invoke fires during that measure (re-entrant), the
+        // ListBox item count gets out of sync → InvalidOperationException.
         vm.Log.CollectionChanged += (_, e) =>
         {
-            if (e.Action == NotifyCollectionChangedAction.Add)
-                LogList.ScrollIntoView(LogList.Items[^1]);
+            if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems?.Count > 0)
+                LogList.ScrollIntoView(e.NewItems[0]);
         };
     }
 }

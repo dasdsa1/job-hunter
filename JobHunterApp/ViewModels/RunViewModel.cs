@@ -362,14 +362,15 @@ public partial class RunViewModel : ObservableObject
     private void AddLog(string msg)
     {
         AppLogger.Info($"[RunLog] {msg}");
-        try
+        // BeginInvoke (async/queued) instead of Invoke (sync/re-entrant).
+        // Invoke can re-enter the dispatcher during WPF measure passes,
+        // letting a second Log.Add fire while the ListBox is still counting
+        // the first one → "ItemsControl inconsistent with its items source".
+        Application.Current.Dispatcher.BeginInvoke(() =>
         {
-            Application.Current.Dispatcher.Invoke(() => Log.Add(msg));
-        }
-        catch (Exception ex)
-        {
-            AppLogger.Exception("RunViewModel.AddLog — Log.Add failed", ex);
-        }
+            try { Log.Add(msg); }
+            catch (Exception ex) { AppLogger.Exception("RunViewModel.AddLog — Log.Add", ex); }
+        });
     }
 
     private void Finish()

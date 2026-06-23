@@ -17,41 +17,37 @@ public static class LinkedInScraper
             var url = BuildUrl(config);
             await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 30_000 });
 
-            // Wait (forever) until EITHER the jobs results appear OR any login/authwall indicator.
-            // This avoids the old 15-second hard timeout that closed the browser before login.
-            await page.WaitForFunctionAsync(@"() => {
-                const hasResults = document.querySelector(
-                    '.jobs-search-results-list, .jobs-search__results-list, .scaffold-layout__list');
-                const needsLogin =
-                    location.href.includes('/login') ||
-                    location.href.includes('/authwall') ||
-                    !!document.querySelector('#username, .login__form, [data-id=""auth-login""]');
-                return !!(hasResults || needsLogin);
-            }", arg: null, new PageWaitForFunctionOptions { Timeout = 0 });
-
-            var needsLogin = await page.EvaluateAsync<bool>(@"() =>
-                location.href.includes('/login')  ||
-                location.href.includes('/authwall') ||
-                !!document.querySelector('#username, .login__form, [data-id=""auth-login""]')");
-
-            if (needsLogin)
+            // Poll using CSS selectors and URL checks only — LinkedIn's CSP blocks eval(),
+            // so WaitForFunctionAsync / EvaluateAsync must not be used here.
+            bool loginDetected = false;
+            while (true)
             {
-                log.Report("🔐  Please log in to LinkedIn in the browser window.");
-                log.Report("    The job hunt will resume automatically once you are logged in.");
-                // Timeout = 0 — wait indefinitely, never close the browser
-                await page.WaitForFunctionAsync(@"() =>
-                    !location.href.includes('/login') &&
-                    !location.href.includes('/authwall') &&
-                    !document.querySelector('#username, .login__form')",
-                    arg: null, new PageWaitForFunctionOptions { Timeout = 0 });
-                log.Report("✔  Logged in to LinkedIn — navigating to job results…");
-                await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
-            }
+                try
+                {
+                    if (await page.QuerySelectorAsync(
+                        ".jobs-search-results-list, .jobs-search__results-list, .scaffold-layout__list")
+                        is not null) break;
 
-            // Now wait for the actual job results (give it 30 s; we're definitely logged in at this point)
-            await page.WaitForSelectorAsync(
-                ".jobs-search-results-list, .jobs-search__results-list, .scaffold-layout__list",
-                new() { Timeout = 30_000 });
+                    bool onLogin = page.Url.Contains("/login") || page.Url.Contains("/authwall")
+                        || await page.QuerySelectorAsync("#username, .login__form") is not null;
+
+                    if (onLogin && !loginDetected)
+                    {
+                        log.Report("🔐  Please log in to LinkedIn in the browser window.");
+                        log.Report("    The job hunt will resume automatically once you are logged in.");
+                        loginDetected = true;
+                    }
+                    else if (loginDetected && !onLogin)
+                    {
+                        log.Report("✔  Logged in to LinkedIn — navigating to job results…");
+                        await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+                        loginDetected = false;
+                    }
+                }
+                catch { /* page is mid-navigation — retry next tick */ }
+
+                await Task.Delay(1_000);
+            }
 
             for (var i = 0; i < 3; i++)
             {

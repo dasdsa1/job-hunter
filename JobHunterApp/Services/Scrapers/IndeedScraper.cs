@@ -17,37 +17,37 @@ public static class IndeedScraper
             var url = BuildUrl(config);
             await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 30_000 });
 
-            // Wait (forever) until EITHER results appear OR a login wall is detected.
-            await page.WaitForFunctionAsync(@"() => {
-                const hasResults = document.querySelector('[data-jk], .jobsearch-ResultsList li, .job_seen_beacon');
-                const needsLogin =
-                    location.href.includes('/account/login') ||
-                    location.href.includes('/promo/resume') ||
-                    !!document.querySelector('#login-email, #ifl-InputFormField-3, [data-testid=""auth-page-email-input""]');
-                return !!(hasResults || needsLogin);
-            }", arg: null, new PageWaitForFunctionOptions { Timeout = 0 });
-
-            var needsLogin = await page.EvaluateAsync<bool>(@"() =>
-                location.href.includes('/account/login') ||
-                location.href.includes('/promo/resume') ||
-                !!document.querySelector('#login-email, #ifl-InputFormField-3, [data-testid=""auth-page-email-input""]')");
-
-            if (needsLogin)
+            // Poll using CSS selectors and URL checks only — no eval() to avoid CSP issues.
+            bool loginDetected = false;
+            while (true)
             {
-                log.Report("🔐  Please log in to Indeed in the browser window.");
-                log.Report("    The job hunt will resume automatically once you are logged in.");
-                await page.WaitForFunctionAsync(@"() =>
-                    !location.href.includes('/account/login') &&
-                    !location.href.includes('/promo/resume') &&
-                    !document.querySelector('#login-email, #ifl-InputFormField-3')",
-                    arg: null, new PageWaitForFunctionOptions { Timeout = 0 });
-                log.Report("✔  Logged in to Indeed — navigating to job results…");
-                await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
-            }
+                try
+                {
+                    if (await page.QuerySelectorAsync("[data-jk], .jobsearch-ResultsList li, .job_seen_beacon")
+                        is not null) break;
 
-            await page.WaitForSelectorAsync(
-                "[data-jk], .jobsearch-ResultsList li, .job_seen_beacon",
-                new() { Timeout = 30_000 });
+                    bool onLogin = page.Url.Contains("/account/login") || page.Url.Contains("/promo/resume")
+                        || await page.QuerySelectorAsync(
+                            "#login-email, #ifl-InputFormField-3, [data-testid='auth-page-email-input']")
+                            is not null;
+
+                    if (onLogin && !loginDetected)
+                    {
+                        log.Report("🔐  Please log in to Indeed in the browser window.");
+                        log.Report("    The job hunt will resume automatically once you are logged in.");
+                        loginDetected = true;
+                    }
+                    else if (loginDetected && !onLogin)
+                    {
+                        log.Report("✔  Logged in to Indeed — navigating to job results…");
+                        await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+                        loginDetected = false;
+                    }
+                }
+                catch { /* page is mid-navigation — retry next tick */ }
+
+                await Task.Delay(1_000);
+            }
 
             var cards = await page.QuerySelectorAllAsync(
                 "[data-jk], .jobsearch-ResultsList li.css-1ac2h1w, .result");

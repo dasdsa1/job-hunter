@@ -15,7 +15,9 @@ public static class LinkedInScraper
         {
             await page.AddInitScriptAsync("Object.defineProperty(navigator,'webdriver',{get:()=>false})");
             var url = BuildUrl(config);
+            log.Report($"LinkedIn: navigating to {url}");
             await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 30_000 });
+            log.Report($"LinkedIn: landed at {Shorten(page.Url)}");
 
             // Poll using CSS selectors and URL checks only — LinkedIn's CSP blocks eval(),
             // so WaitForFunctionAsync / EvaluateAsync must not be used here.
@@ -39,8 +41,10 @@ public static class LinkedInScraper
                     }
                     else if (loginDetected && !onLogin)
                     {
-                        log.Report("✔  Logged in to LinkedIn — navigating to job results…");
+                        log.Report($"✔  Logged in — at {Shorten(page.Url)}");
+                        log.Report("    Navigating to job results…");
                         await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+                        log.Report($"LinkedIn: results page at {Shorten(page.Url)}");
                         loginDetected = false;
                     }
                 }
@@ -49,35 +53,63 @@ public static class LinkedInScraper
                 await Task.Delay(1_000);
             }
 
+            log.Report($"LinkedIn: results container found at {Shorten(page.Url)}");
+
+            // Scroll to trigger lazy-loaded cards — Mouse.Wheel avoids eval() / CSP
             for (var i = 0; i < 3; i++)
             {
-                await page.EvaluateAsync("() => window.scrollBy(0, 600)");
-                await page.WaitForTimeoutAsync(700);
+                await page.Mouse.WheelAsync(0, 700);
+                await Task.Delay(700);
             }
 
-            var cards = await page.QuerySelectorAllAsync(
-                "li.jobs-search-results__list-item, li[data-occludable-job-id]");
+            // Probe multiple selectors — LinkedIn frequently renames CSS classes.
+            // Log counts so selector drift is immediately visible in the run log.
+            var cA = await page.QuerySelectorAllAsync("li.jobs-search-results__list-item");
+            var cB = await page.QuerySelectorAllAsync("li[data-occludable-job-id]");
+            var cC = await page.QuerySelectorAllAsync(".scaffold-layout__list-item");
+            var cD = await page.QuerySelectorAllAsync(".job-card-container--clickable");
+            var cE = await page.QuerySelectorAllAsync("[data-job-id]");
+            log.Report($"LinkedIn: card probe — " +
+                       $"list-item:{cA.Count}  occludable:{cB.Count}  " +
+                       $"scaffold:{cC.Count}  clickable:{cD.Count}  job-id:{cE.Count}");
 
-            for (var i = 0; i < Math.Min(cards.Count, config.MaxJobsPerSite); i++)
+            // Use whichever selector found the most cards
+            var cards = new[] { cA, cB, cC, cD, cE }
+                .OrderByDescending(c => c.Count)
+                .First();
+            var limit = Math.Min(cards.Count, config.MaxJobsPerSite);
+            log.Report($"LinkedIn: processing {limit} of {cards.Count} card(s)");
+
+            for (var i = 0; i < limit; i++)
             {
                 try
                 {
+                    log.Report($"LinkedIn: card {i + 1}/{limit}…");
                     await cards[i].ClickAsync();
-                    await page.WaitForTimeoutAsync(1_200);
+                    await Task.Delay(1_500);
                     var job = await ExtractJobAsync(page, i.ToString());
-                    if (job is null) continue;
-                    if (config.LinkedInEasyApplyOnly && !IsEasyApply(job)) continue;
+                    if (job is null)
+                    {
+                        log.Report($"LinkedIn:   card {i + 1} — no title/company found (selectors may have drifted)");
+                        continue;
+                    }
+                    if (config.LinkedInEasyApplyOnly && !IsEasyApply(job))
+                    {
+                        log.Report($"LinkedIn:   '{job.Title}' skipped — not Easy Apply");
+                        continue;
+                    }
                     jobs.Add(job);
-                    log.Report($"LinkedIn: scraped {jobs.Count} job(s)…");
+                    log.Report($"LinkedIn:   ✔  {job.Title} @ {job.Company}");
                 }
-                catch { }
+                catch (Exception ex) { log.Report($"LinkedIn:   card {i + 1} error: {ex.Message}"); }
             }
 
-            log.Report($"LinkedIn: found {jobs.Count} job(s)");
+            log.Report($"LinkedIn: done — {jobs.Count} job(s) collected");
         }
         catch (Exception ex)
         {
             log.Report($"LinkedIn scraping failed: {ex.Message}");
+            AppLogger.Exception("LinkedInScraper", ex);
         }
         finally
         {
@@ -87,27 +119,47 @@ public static class LinkedInScraper
         return jobs;
     }
 
-    /// Returns true when the job has the LinkedIn Easy Apply button (one-click in-platform apply).
     private static bool IsEasyApply(JobListing job) => job.IsEasyApply;
+
+    private static string Shorten(string url) =>
+        url.Length > 90 ? url[..90] + "…" : url;
 
     private static string BuildUrl(SearchConfig c)
     {
-        var kw     = string.Join(" ", new[] { c.JobTitle, c.Keywords }.Where(s => !string.IsNullOrWhiteSpace(s)));
-        var query  = $"keywords={Uri.EscapeDataString(kw)}&location={Uri.EscapeDataString(c.Location)}";
+        var kw    = string.Join(" ", new[] { c.JobTitle, c.Keywords }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        var query = $"keywords={Uri.EscapeDataString(kw)}&location={Uri.EscapeDataString(c.Location)}";
         if (c.LinkedInEasyApplyOnly) query += "&f_LF=f_AL";
         return $"https://www.linkedin.com/jobs/search/?{query}";
     }
 
     private static async Task<JobListing?> ExtractJobAsync(IPage page, string idx)
     {
-        var title   = await SafeTextAsync(page, [".jobs-unified-top-card__job-title", ".job-details-jobs-unified-top-card__job-title", "h1.t-24"]);
-        var company = await SafeTextAsync(page, [".jobs-unified-top-card__company-name a", ".jobs-unified-top-card__company-name", ".job-details-jobs-unified-top-card__company-name"]);
-        var loc     = await SafeTextAsync(page, [".jobs-unified-top-card__bullet", ".job-details-jobs-unified-top-card__bullet"]);
-        var desc    = await SafeTextAsync(page, [".jobs-description-content__text", ".jobs-description__content", "#job-details"]);
+        var title   = await SafeTextAsync(page, [
+            ".jobs-unified-top-card__job-title",
+            ".job-details-jobs-unified-top-card__job-title",
+            "h1.t-24", "h1"
+        ]);
+        var company = await SafeTextAsync(page, [
+            ".jobs-unified-top-card__company-name a",
+            ".jobs-unified-top-card__company-name",
+            ".job-details-jobs-unified-top-card__company-name",
+            ".topcard__org-name-link", ".topcard__flavor"
+        ]);
+        var loc = await SafeTextAsync(page, [
+            ".jobs-unified-top-card__bullet",
+            ".job-details-jobs-unified-top-card__bullet",
+            ".topcard__flavor--bullet"
+        ]);
+        var desc = await SafeTextAsync(page, [
+            ".jobs-description-content__text",
+            ".jobs-description__content",
+            "#job-details",
+            ".description__text"
+        ]);
 
         if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(company)) return null;
 
-        var btn         = await page.QuerySelectorAsync("button.jobs-apply-button");
+        var btn         = await page.QuerySelectorAsync("button.jobs-apply-button, .jobs-apply-button");
         var btnText     = btn is not null ? await btn.TextContentAsync() : "";
         var isEasyApply = (btnText ?? "").Contains("Easy Apply", StringComparison.OrdinalIgnoreCase);
 

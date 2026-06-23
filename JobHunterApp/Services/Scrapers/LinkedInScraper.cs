@@ -55,26 +55,51 @@ public static class LinkedInScraper
 
             log.Report($"LinkedIn: results container found at {Shorten(page.Url)}");
 
-            // Scroll to trigger lazy-loaded cards — Mouse.Wheel avoids eval() / CSP
-            for (var i = 0; i < 3; i++)
+            // Scroll the results panel — move mouse into it first so the wheel hits
+            // the correct scrollable element (the left panel, not the window).
+            var panel = await page.QuerySelectorAsync(
+                ".jobs-search-results-list, .jobs-search__results-list, .scaffold-layout__list");
+            if (panel is not null)
             {
-                await page.Mouse.WheelAsync(0, 700);
-                await Task.Delay(700);
+                var box = await panel.BoundingBoxAsync();
+                if (box is not null)
+                    await page.Mouse.MoveAsync(box.X + box.Width / 2, box.Y + box.Height / 2);
             }
+            for (var i = 0; i < 5; i++)
+            {
+                await page.Mouse.WheelAsync(0, 600);
+                await Task.Delay(600);
+            }
+            // Scroll back to top so cards are in view
+            await page.Mouse.WheelAsync(0, -9999);
+            await Task.Delay(500);
 
-            // Probe multiple selectors — LinkedIn frequently renames CSS classes.
-            // Log counts so selector drift is immediately visible in the run log.
+            // ── Selector probe ───────────────────────────────────────────────────
+            // LinkedIn renames CSS classes often; try many patterns and log counts
+            // so we can see immediately which selector LinkedIn currently uses.
             var cA = await page.QuerySelectorAllAsync("li.jobs-search-results__list-item");
             var cB = await page.QuerySelectorAllAsync("li[data-occludable-job-id]");
             var cC = await page.QuerySelectorAllAsync(".scaffold-layout__list-item");
             var cD = await page.QuerySelectorAllAsync(".job-card-container--clickable");
             var cE = await page.QuerySelectorAllAsync("[data-job-id]");
-            log.Report($"LinkedIn: card probe — " +
+            log.Report($"LinkedIn: card probe A — " +
                        $"list-item:{cA.Count}  occludable:{cB.Count}  " +
                        $"scaffold:{cC.Count}  clickable:{cD.Count}  job-id:{cE.Count}");
 
+            // Deep probe using CSS attribute-contains selectors (CSP-safe, pure DOM)
+            var dA = await page.QuerySelectorAllAsync("[class*='job-card']");
+            var dB = await page.QuerySelectorAllAsync("[class*='JobCard']");
+            var dC = await page.QuerySelectorAllAsync("[class*='result-card']");
+            var dD = await page.QuerySelectorAllAsync("[data-entity-urn*='jobPosting']");
+            var dE = await page.QuerySelectorAllAsync("[data-view-name*='job-card']");
+            var dF = await page.QuerySelectorAllAsync("article");
+            var dG = await page.QuerySelectorAllAsync("li[class]");
+            log.Report($"LinkedIn: card probe B — " +
+                       $"*job-card*:{dA.Count}  *JobCard*:{dB.Count}  *result-card*:{dC.Count}  " +
+                       $"entity-urn:{dD.Count}  view-name:{dE.Count}  article:{dF.Count}  li[class]:{dG.Count}");
+
             // Use whichever selector found the most cards
-            var cards = new[] { cA, cB, cC, cD, cE }
+            var cards = new[] { cA, cB, cC, cD, cE, dA, dB, dC, dD, dE, dF, dG }
                 .OrderByDescending(c => c.Count)
                 .First();
             var limit = Math.Min(cards.Count, config.MaxJobsPerSite);

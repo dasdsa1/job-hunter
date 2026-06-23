@@ -38,10 +38,8 @@ public partial class SearchViewModel : ObservableObject
     [ObservableProperty] private int  _minScore              = 6;
     [ObservableProperty] private int  _maxJobsPerSite        = 20;
     [ObservableProperty] private bool _linkedInEasyApplyOnly = true;
-    [ObservableProperty] private bool _indeedApplyOnly       = true;
+    [ObservableProperty] private bool _indeedApplyOnly       = false;
 
-    // ICollectionView lets us re-filter via Refresh() without touching
-    // the underlying collection — avoids the ItemsControl inconsistency
     public ICollectionView JobTitleSuggestions { get; }
     public ICollectionView LocationSuggestions { get; }
     public ICollectionView KeywordsSuggestions { get; }
@@ -52,16 +50,31 @@ public partial class SearchViewModel : ObservableObject
     {
         _history = SearchHistoryService.Load();
 
-        foreach (var s in _history.JobTitles) _jobTitleColl.Add(s);
-        foreach (var s in _history.Locations) _locationColl.Add(s);
-        foreach (var s in _history.Keywords)  _keywordsColl.Add(s);
+        // ── Restore last-used field values and checkbox states ───────────────
+        // Set backing fields directly to avoid triggering partial hooks during init
+        var s = _history.LastState;
+        _jobTitle              = s.JobTitle;
+        _location              = s.Location;
+        _keywords              = s.Keywords;
+        _useLinkedIn           = s.UseLinkedIn;
+        _useIndeed             = s.UseIndeed;
+        _linkedInEasyApplyOnly = s.LinkedInEasyApplyOnly;
+        _indeedApplyOnly       = s.IndeedApplyOnly;
+        _minScore              = s.MinScore;
+        _maxJobsPerSite        = s.MaxJobsPerSite;
 
-        AppLogger.Info($"SearchViewModel: init — jobTitleColl:{_jobTitleColl.Count} locationColl:{_locationColl.Count} keywordsColl:{_keywordsColl.Count}");
+        AppLogger.Info($"SearchViewModel: restored state — jt='{_jobTitle}' lo='{_location}' linkedin={_useLinkedIn} indeed={_useIndeed}");
+
+        // ── Populate autocomplete collections ────────────────────────────────
+        foreach (var h in _history.JobTitles) _jobTitleColl.Add(h);
+        foreach (var h in _history.Locations) _locationColl.Add(h);
+        foreach (var h in _history.Keywords)  _keywordsColl.Add(h);
 
         JobTitleSuggestions = CollectionViewSource.GetDefaultView(_jobTitleColl);
         LocationSuggestions = CollectionViewSource.GetDefaultView(_locationColl);
         KeywordsSuggestions = CollectionViewSource.GetDefaultView(_keywordsColl);
 
+        // Filters use the restored field values from the start
         JobTitleSuggestions.Filter = o => Matches(o, JobTitle);
         LocationSuggestions.Filter = o => Matches(o, Location);
         KeywordsSuggestions.Filter = o => Matches(o, Keywords);
@@ -69,21 +82,19 @@ public partial class SearchViewModel : ObservableObject
 
     partial void OnJobTitleChanged(string value)
     {
-        AppLogger.Info($"SearchViewModel: JobTitle changed → '{value}', refreshing {_jobTitleColl.Count} suggestions");
+        AppLogger.Info($"SearchViewModel: JobTitle → '{value}'");
         try { JobTitleSuggestions.Refresh(); }
         catch (Exception ex) { AppLogger.Exception("JobTitleSuggestions.Refresh", ex); }
     }
 
     partial void OnLocationChanged(string value)
     {
-        AppLogger.Info($"SearchViewModel: Location changed → '{value}'");
         try { LocationSuggestions.Refresh(); }
         catch (Exception ex) { AppLogger.Exception("LocationSuggestions.Refresh", ex); }
     }
 
     partial void OnKeywordsChanged(string value)
     {
-        AppLogger.Info($"SearchViewModel: Keywords changed → '{value}'");
         try { KeywordsSuggestions.Refresh(); }
         catch (Exception ex) { AppLogger.Exception("KeywordsSuggestions.Refresh", ex); }
     }
@@ -119,14 +130,27 @@ public partial class SearchViewModel : ObservableObject
         var lo = Location.Trim();
         var kw = Keywords.Trim();
 
-        AppLogger.Info($"SearchViewModel: Start() — jt='{jt}' lo='{lo}' kw='{kw}' sites={string.Join(",", sites)}");
+        AppLogger.Info($"SearchViewModel: Start() — jt='{jt}' sites={string.Join(",", sites)}");
+
+        // ── Persist current state ────────────────────────────────────────────
+        _history.LastState = new SearchState
+        {
+            JobTitle              = jt,
+            Location              = lo,
+            Keywords              = kw,
+            UseLinkedIn           = UseLinkedIn,
+            UseIndeed             = UseIndeed,
+            LinkedInEasyApplyOnly = LinkedInEasyApplyOnly,
+            IndeedApplyOnly       = IndeedApplyOnly,
+            MinScore              = MinScore,
+            MaxJobsPerSite        = MaxJobsPerSite
+        };
 
         SearchHistoryService.AddEntry(_history.JobTitles, jt);
         SearchHistoryService.AddEntry(_history.Locations, lo);
         SearchHistoryService.AddEntry(_history.Keywords,  kw);
         SearchHistoryService.Save(_history);
 
-        AppLogger.Info($"SearchViewModel: PushToFront — jobTitleColl.Count={_jobTitleColl.Count} before push");
         try
         {
             PushToFront(_jobTitleColl, _history.JobTitles);
@@ -134,7 +158,6 @@ public partial class SearchViewModel : ObservableObject
             PushToFront(_keywordsColl, _history.Keywords);
         }
         catch (Exception ex) { AppLogger.Exception("SearchViewModel.PushToFront", ex); }
-        AppLogger.Info($"SearchViewModel: PushToFront done — jobTitleColl.Count={_jobTitleColl.Count}");
 
         StartRequested?.Invoke(new SearchConfig
         {
@@ -149,15 +172,14 @@ public partial class SearchViewModel : ObservableObject
         });
     }
 
-    // Sync collection to match source by moving/inserting/trimming — no Clear()
     private static void PushToFront(ObservableCollection<string> coll, List<string> source)
     {
         if (source.Count == 0) return;
         var newest = source[0];
         var idx = coll.IndexOf(newest);
-        if (idx == 0) return;                  // already at top
-        if (idx > 0) coll.Move(idx, 0);        // move existing entry to front
-        else          coll.Insert(0, newest);  // brand-new entry
+        if (idx == 0) return;
+        if (idx > 0) coll.Move(idx, 0);
+        else         coll.Insert(0, newest);
         while (coll.Count > source.Count)
             coll.RemoveAt(coll.Count - 1);
     }

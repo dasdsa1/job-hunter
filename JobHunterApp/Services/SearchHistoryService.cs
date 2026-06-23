@@ -3,11 +3,25 @@ using JobHunterApp.Models;
 
 namespace JobHunterApp.Services;
 
+public class SearchState
+{
+    public string JobTitle              { get; set; } = "";
+    public string Location              { get; set; } = "Remote";
+    public string Keywords              { get; set; } = "";
+    public bool   UseLinkedIn           { get; set; } = true;
+    public bool   UseIndeed             { get; set; } = true;
+    public bool   LinkedInEasyApplyOnly { get; set; } = true;
+    public bool   IndeedApplyOnly       { get; set; } = false;
+    public int    MinScore              { get; set; } = 6;
+    public int    MaxJobsPerSite        { get; set; } = 20;
+}
+
 public class SearchHistory
 {
     public List<string> JobTitles { get; set; } = [];
     public List<string> Locations { get; set; } = [];
     public List<string> Keywords  { get; set; } = [];
+    public SearchState  LastState { get; set; } = new();
 }
 
 public static class SearchHistoryService
@@ -25,7 +39,8 @@ public static class SearchHistoryService
             }
             var json = File.ReadAllText(AppPaths.SearchHistory);
             var result = JsonSerializer.Deserialize<SearchHistory>(json) ?? new SearchHistory();
-            AppLogger.Info($"SearchHistory: loaded — titles:{result.JobTitles.Count} locations:{result.Locations.Count} keywords:{result.Keywords.Count}");
+            result.LastState ??= new SearchState();
+            AppLogger.Info($"SearchHistory: loaded — titles:{result.JobTitles.Count}, lastJobTitle:'{result.LastState.JobTitle}'");
             return result;
         }
         catch (Exception ex)
@@ -41,7 +56,7 @@ public static class SearchHistoryService
         {
             var json = JsonSerializer.Serialize(history, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(AppPaths.SearchHistory, json);
-            AppLogger.Info($"SearchHistory: saved to {AppPaths.SearchHistory} — titles:{history.JobTitles.Count}");
+            AppLogger.Info($"SearchHistory: saved — lastJobTitle:'{history.LastState.JobTitle}'");
         }
         catch (Exception ex)
         {

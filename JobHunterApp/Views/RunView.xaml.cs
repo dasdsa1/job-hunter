@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using JobHunterApp.ViewModels;
@@ -12,10 +13,6 @@ public partial class RunView : UserControl
         InitializeComponent();
         DataContext = vm;
 
-        // Both Log.Add (in AddLog) and ScrollIntoView run at Background priority (4),
-        // which is below Render (7). WPF layout at Render always completes before the
-        // next Background item fires, so VirtualizingStackPanel.MeasureChild never sees
-        // a mid-add collection state → no more "ItemsControl inconsistent" crash.
         vm.Log.CollectionChanged += (_, e) =>
         {
             if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems?.Count > 0)
@@ -25,5 +22,11 @@ public partial class RunView : UserControl
                     () => LogList.ScrollIntoView(item));
             }
         };
+    }
+
+    private void CopyLog_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not RunViewModel vm || vm.Log.Count == 0) return;
+        Clipboard.SetText(string.Join(Environment.NewLine, vm.Log));
     }
 }

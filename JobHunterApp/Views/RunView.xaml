@@ -44,14 +44,50 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="LOG" FontSize="10" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextMutedBrush}"
-                               Margin="12,10,0,6"/>
+                    <Grid Grid.Row="0" Margin="12,8,8,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="LOG" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" x:Name="CopyLogButton"
+                                Content="Copy" Padding="10,3"
+                                Style="{StaticResource SecondaryButton}"
+                                FontSize="11" Click="CopyLog_Click"
+                                ToolTip="Copy all log entries to clipboard"/>
+                    </Grid>
                     <ListBox Grid.Row="1" x:Name="LogList"
                              ItemsSource="{Binding Log}"
                              BorderThickness="0" Background="Transparent"
                              Margin="4,0,4,8" FontFamily="Consolas" FontSize="11"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="4,1"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <TextBox Text="{Binding Mode=OneWay}"
+                                                     IsReadOnly="True"
+                                                     BorderThickness="0"
+                                                     Background="Transparent"
+                                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                                     FontFamily="Consolas" FontSize="11"
+                                                     TextWrapping="Wrap"
+                                                     Padding="4,1"
+                                                     Cursor="IBeam"
+                                                     CaretBrush="Transparent"/>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
                 </Grid>
             </Border>
 

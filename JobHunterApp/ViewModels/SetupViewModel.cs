@@ -14,8 +14,9 @@ public partial class SetupViewModel : ObservableObject
     [ObservableProperty] private string      _apiKey       = "";
     [ObservableProperty] private string      _geminiModel  = "gemini-2.0-flash-lite";
     [ObservableProperty] private int         _geminiRpm    = 15;
-    [ObservableProperty] private BrowserMode _browserMode  = BrowserMode.ConnectToBrowser;
-    [ObservableProperty] private int         _cdpPort      = 9222;
+    [ObservableProperty] private BrowserMode      _browserMode      = BrowserMode.ConnectToBrowser;
+    [ObservableProperty] private PreferredBrowser _preferredBrowser = PreferredBrowser.Chrome;
+    [ObservableProperty] private int              _cdpPort          = 9222;
     [ObservableProperty] private string      _cvPath       = "";
     [ObservableProperty] private string      _cvKey        = "cv";
     [ObservableProperty] private string      _saveStatus   = "";
@@ -29,8 +30,9 @@ public partial class SetupViewModel : ObservableObject
         ApiKey      = cfg.ApiKey;
         GeminiModel = cfg.GeminiModel;
         GeminiRpm   = cfg.GeminiRpm;
-        BrowserMode = cfg.BrowserMode;
-        CdpPort     = cfg.CdpPort;
+        BrowserMode      = cfg.BrowserMode;
+        PreferredBrowser = cfg.PreferredBrowser;
+        CdpPort          = cfg.CdpPort;
         CvPath      = cfg.Cv?.Path ?? "";
         CvKey       = cfg.Cv?.Key  ?? "cv";
         foreach (var l in cfg.Letters) Letters.Add(l);
@@ -39,23 +41,34 @@ public partial class SetupViewModel : ObservableObject
     [RelayCommand]
     private void LaunchBrowser()
     {
-        // Try Chrome, then Edge
-        var chromePaths = new[]
+        var local  = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var progX  = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+        var prog   = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+
+        var candidates = PreferredBrowser switch
         {
-            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Google\Chrome\Application\chrome.exe"),
-            @"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                @"Microsoft\Edge\Application\msedge.exe"),
-            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                @"Microsoft\Edge\Application\msedge.exe"),
+            PreferredBrowser.Firefox => new[]
+            {
+                System.IO.Path.Combine(prog,  @"Mozilla Firefox\firefox.exe"),
+                System.IO.Path.Combine(progX, @"Mozilla Firefox\firefox.exe"),
+            },
+            PreferredBrowser.Edge => new[]
+            {
+                System.IO.Path.Combine(prog,  @"Microsoft\Edge\Application\msedge.exe"),
+                System.IO.Path.Combine(progX, @"Microsoft\Edge\Application\msedge.exe"),
+            },
+            _ => new[]  // Chrome
+            {
+                System.IO.Path.Combine(local, @"Google\Chrome\Application\chrome.exe"),
+                System.IO.Path.Combine(prog,  @"Google\Chrome\Application\chrome.exe"),
+                System.IO.Path.Combine(progX, @"Google\Chrome\Application\chrome.exe"),
+            }
         };
 
-        var exe = chromePaths.FirstOrDefault(System.IO.File.Exists);
+        var exe = candidates.FirstOrDefault(System.IO.File.Exists);
         if (exe is null)
         {
-            BrowserStatus = "Chrome/Edge not found. Launch manually with --remote-debugging-port=" + CdpPort;
+            BrowserStatus = $"{PreferredBrowser} not found. Launch it manually with --remote-debugging-port={CdpPort}";
             return;
         }
 
@@ -63,11 +76,11 @@ public partial class SetupViewModel : ObservableObject
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName  = exe,
-                Arguments = $"--remote-debugging-port={CdpPort}",
+                FileName        = exe,
+                Arguments       = $"--remote-debugging-port={CdpPort}",
                 UseShellExecute = false
             });
-            BrowserStatus = $"Browser launched on port {CdpPort} — log in to your sites, then start the job run.";
+            BrowserStatus = $"{PreferredBrowser} launched on port {CdpPort} — log in to your sites, then start the job run.";
         }
         catch (Exception ex)
         {
@@ -121,8 +134,9 @@ public partial class SetupViewModel : ObservableObject
             ApiKey      = ApiKey.Trim(),
             GeminiModel = GeminiModel.Trim(),
             GeminiRpm   = GeminiRpm,
-            BrowserMode = BrowserMode,
-            CdpPort     = CdpPort,
+            BrowserMode      = BrowserMode,
+            PreferredBrowser = PreferredBrowser,
+            CdpPort          = CdpPort,
             Cv          = string.IsNullOrWhiteSpace(CvPath) ? null
                           : new FileEntry { Key = CvKey, Label = System.IO.Path.GetFileName(CvPath), Path = CvPath },
             Letters     = [.. Letters]

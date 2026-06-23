@@ -36,9 +36,30 @@
                                      Foreground="{StaticResource TextPrimaryBrush}"/>
                     </StackPanel>
 
-                    <TextBlock Text="Connect to your existing Chrome/Edge session so you stay logged in to LinkedIn, Indeed, etc."
+                    <TextBlock Text="Connect to your existing browser session so you stay logged in to LinkedIn, Indeed, etc."
                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"
                                TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                    <!-- Browser picker -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <RadioButton Content="Chrome"
+                                     IsChecked="{Binding PreferredBrowser,
+                                         Converter={StaticResource EnumBoolConverter},
+                                         ConverterParameter=Chrome}"
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     Margin="0,0,20,0"/>
+                        <RadioButton Content="Firefox"
+                                     IsChecked="{Binding PreferredBrowser,
+                                         Converter={StaticResource EnumBoolConverter},
+                                         ConverterParameter=Firefox}"
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     Margin="0,0,20,0"/>
+                        <RadioButton Content="Edge"
+                                     IsChecked="{Binding PreferredBrowser,
+                                         Converter={StaticResource EnumBoolConverter},
+                                         ConverterParameter=Edge}"
+                                     Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </StackPanel>
 
                     <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>

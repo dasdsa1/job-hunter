@@ -13,87 +13,95 @@
             <TextBlock Text="Configure your API key, CV file, and recommendation letters."
                        Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,28"/>
 
-            <!-- Browser Mode -->
+            <!-- Browser -->
             <Border Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                     CornerRadius="8" Padding="20" Margin="0,0,0,16">
                 <StackPanel>
                     <TextBlock Text="BROWSER" FontSize="11" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextSecondaryBrush}"
-                               Margin="0,0,0,12"/>
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="12"
+                               Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,16">
+                        The app opens your browser automatically. Log in to LinkedIn and Indeed the
+                        first time — your session is saved so you won't need to log in again.
+                    </TextBlock>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                        <RadioButton Content="Use my browser (recommended)"
-                                     IsChecked="{Binding BrowserMode,
-                                         Converter={StaticResource EnumBoolConverter},
-                                         ConverterParameter=ConnectToBrowser}"
-                                     Foreground="{StaticResource TextPrimaryBrush}"
-                                     Margin="0,0,24,0"/>
-                        <RadioButton Content="Managed profile"
-                                     IsChecked="{Binding BrowserMode,
-                                         Converter={StaticResource EnumBoolConverter},
-                                         ConverterParameter=Managed}"
-                                     Foreground="{StaticResource TextPrimaryBrush}"/>
-                    </StackPanel>
-
-                    <TextBlock Text="Connect to your existing browser session so you stay logged in to LinkedIn, Indeed, etc."
-                               Foreground="{StaticResource TextMutedBrush}" FontSize="11"
-                               TextWrapping="Wrap" Margin="0,0,0,12"/>
-
-                    <!-- Browser picker -->
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                    <!-- Browser choice -->
+                    <TextBlock Text="Browser" Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="11" Margin="0,0,0,8"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                         <RadioButton Content="Chrome"
                                      IsChecked="{Binding PreferredBrowser,
                                          Converter={StaticResource EnumBoolConverter},
                                          ConverterParameter=Chrome}"
                                      Foreground="{StaticResource TextPrimaryBrush}"
-                                     Margin="0,0,20,0"/>
+                                     Margin="0,0,24,0"
+                                     ToolTip="Opens your installed Google Chrome with a dedicated app profile."/>
                         <RadioButton Content="Firefox"
                                      IsChecked="{Binding PreferredBrowser,
                                          Converter={StaticResource EnumBoolConverter},
                                          ConverterParameter=Firefox}"
                                      Foreground="{StaticResource TextPrimaryBrush}"
-                                     Margin="0,0,20,0"/>
+                                     Margin="0,0,24,0"
+                                     ToolTip="Opens Firefox. Requires: playwright install firefox"/>
                         <RadioButton Content="Edge"
                                      IsChecked="{Binding PreferredBrowser,
                                          Converter={StaticResource EnumBoolConverter},
                                          ConverterParameter=Edge}"
-                                     Foreground="{StaticResource TextPrimaryBrush}"/>
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     ToolTip="Opens your installed Microsoft Edge with a dedicated app profile."/>
                     </StackPanel>
 
-                    <Grid Margin="0,0,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="80"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Debug port"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                   FontSize="12" VerticalAlignment="Center"/>
-                        <TextBox Grid.Column="2"
-                                 Text="{Binding CdpPort, UpdateSourceTrigger=PropertyChanged}"
-                                 FontFamily="Consolas"/>
-                        <Button Grid.Column="4" Content="Launch Browser for Automation"
-                                Command="{Binding LaunchBrowserCommand}"
-                                Style="{StaticResource SecondaryButton}" Padding="14,6"/>
-                    </Grid>
-
-                    <TextBlock Text="{Binding BrowserStatus}"
-                               Foreground="{StaticResource AccentBrush}"
-                               FontSize="11" TextWrapping="Wrap">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Visible"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding BrowserStatus}" Value="">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                    <!-- Advanced: CDP -->
+                    <Expander Header="Advanced — connect to an already-running browser"
+                              Foreground="{StaticResource TextMutedBrush}" FontSize="11">
+                        <StackPanel Margin="0,12,0,0">
+                            <TextBlock TextWrapping="Wrap" FontSize="11"
+                                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10">
+                                Use this if you want to control a browser you already have open.
+                                Launch it with <Run FontFamily="Consolas">--remote-debugging-port=9222</Run>
+                                then click the button below.
+                            </TextBlock>
+                            <RadioButton Content="Connect to existing browser session"
+                                         IsChecked="{Binding BrowserMode,
+                                             Converter={StaticResource EnumBoolConverter},
+                                             ConverterParameter=ConnectToBrowser}"
+                                         Foreground="{StaticResource TextPrimaryBrush}"
+                                         Margin="0,0,0,10"/>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Debug port"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="12" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="2"
+                                         Text="{Binding CdpPort, UpdateSourceTrigger=PropertyChanged}"
+                                         FontFamily="Consolas"/>
+                                <Button Grid.Column="4" Content="Launch with debug port"
+                                        Command="{Binding LaunchBrowserCommand}"
+                                        Style="{StaticResource SecondaryButton}" Padding="14,6"/>
+                            </Grid>
+                            <TextBlock Text="{Binding BrowserStatus}"
+                                       Foreground="{StaticResource AccentBrush}"
+                                       FontSize="11" TextWrapping="Wrap">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BrowserStatus}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Expander>
                 </StackPanel>
             </Border>
 

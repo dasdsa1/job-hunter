@@ -154,7 +154,7 @@ public partial class RunViewModel : ObservableObject
         IBrowserContext? browser = null;
         try
         {
-            browser = await BrowserService.CreateContextAsync();
+            browser = await BrowserService.CreateContextAsync(appConfig);
         }
         catch (Exception ex)
         {

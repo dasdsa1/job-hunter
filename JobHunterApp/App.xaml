@@ -1,12 +1,15 @@
 <Application x:Class="JobHunterApp.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:JobHunterApp.Converters"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/Dark.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <conv:EnumToBoolConverter x:Key="EnumBoolConverter"/>
+            <BooleanToVisibilityConverter x:Key="BoolVis"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

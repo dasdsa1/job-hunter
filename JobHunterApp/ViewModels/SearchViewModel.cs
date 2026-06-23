@@ -56,6 +56,8 @@ public partial class SearchViewModel : ObservableObject
         foreach (var s in _history.Locations) _locationColl.Add(s);
         foreach (var s in _history.Keywords)  _keywordsColl.Add(s);
 
+        AppLogger.Info($"SearchViewModel: init — jobTitleColl:{_jobTitleColl.Count} locationColl:{_locationColl.Count} keywordsColl:{_keywordsColl.Count}");
+
         JobTitleSuggestions = CollectionViewSource.GetDefaultView(_jobTitleColl);
         LocationSuggestions = CollectionViewSource.GetDefaultView(_locationColl);
         KeywordsSuggestions = CollectionViewSource.GetDefaultView(_keywordsColl);
@@ -65,11 +67,26 @@ public partial class SearchViewModel : ObservableObject
         KeywordsSuggestions.Filter = o => Matches(o, Keywords);
     }
 
-    // Refresh the filter whenever the bound text changes — single atomic Reset,
-    // no add/remove events on the collection itself
-    partial void OnJobTitleChanged(string value) => JobTitleSuggestions.Refresh();
-    partial void OnLocationChanged(string value) => LocationSuggestions.Refresh();
-    partial void OnKeywordsChanged(string value) => KeywordsSuggestions.Refresh();
+    partial void OnJobTitleChanged(string value)
+    {
+        AppLogger.Info($"SearchViewModel: JobTitle changed → '{value}', refreshing {_jobTitleColl.Count} suggestions");
+        try { JobTitleSuggestions.Refresh(); }
+        catch (Exception ex) { AppLogger.Exception("JobTitleSuggestions.Refresh", ex); }
+    }
+
+    partial void OnLocationChanged(string value)
+    {
+        AppLogger.Info($"SearchViewModel: Location changed → '{value}'");
+        try { LocationSuggestions.Refresh(); }
+        catch (Exception ex) { AppLogger.Exception("LocationSuggestions.Refresh", ex); }
+    }
+
+    partial void OnKeywordsChanged(string value)
+    {
+        AppLogger.Info($"SearchViewModel: Keywords changed → '{value}'");
+        try { KeywordsSuggestions.Refresh(); }
+        catch (Exception ex) { AppLogger.Exception("KeywordsSuggestions.Refresh", ex); }
+    }
 
     private static bool Matches(object? item, string text) =>
         item is string s &&
@@ -102,15 +119,22 @@ public partial class SearchViewModel : ObservableObject
         var lo = Location.Trim();
         var kw = Keywords.Trim();
 
+        AppLogger.Info($"SearchViewModel: Start() — jt='{jt}' lo='{lo}' kw='{kw}' sites={string.Join(",", sites)}");
+
         SearchHistoryService.AddEntry(_history.JobTitles, jt);
         SearchHistoryService.AddEntry(_history.Locations, lo);
         SearchHistoryService.AddEntry(_history.Keywords,  kw);
         SearchHistoryService.Save(_history);
 
-        // Push new entries into the backing collections without clearing them
-        PushToFront(_jobTitleColl, _history.JobTitles);
-        PushToFront(_locationColl, _history.Locations);
-        PushToFront(_keywordsColl, _history.Keywords);
+        AppLogger.Info($"SearchViewModel: PushToFront — jobTitleColl.Count={_jobTitleColl.Count} before push");
+        try
+        {
+            PushToFront(_jobTitleColl, _history.JobTitles);
+            PushToFront(_locationColl, _history.Locations);
+            PushToFront(_keywordsColl, _history.Keywords);
+        }
+        catch (Exception ex) { AppLogger.Exception("SearchViewModel.PushToFront", ex); }
+        AppLogger.Info($"SearchViewModel: PushToFront done — jobTitleColl.Count={_jobTitleColl.Count}");
 
         StartRequested?.Invoke(new SearchConfig
         {

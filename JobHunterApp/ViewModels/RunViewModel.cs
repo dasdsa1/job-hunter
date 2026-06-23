@@ -359,8 +359,18 @@ public partial class RunViewModel : ObservableObject
     private void ClearInteraction() =>
         Application.Current.Dispatcher.Invoke(() => PendingInteraction = null);
 
-    private void AddLog(string msg) =>
-        Application.Current.Dispatcher.Invoke(() => Log.Add(msg));
+    private void AddLog(string msg)
+    {
+        AppLogger.Info($"[RunLog] {msg}");
+        try
+        {
+            Application.Current.Dispatcher.Invoke(() => Log.Add(msg));
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Exception("RunViewModel.AddLog — Log.Add failed", ex);
+        }
+    }
 
     private void Finish()
     {

@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JobHunterApp.Models;
@@ -9,6 +11,11 @@ namespace JobHunterApp.ViewModels;
 public partial class SearchViewModel : ObservableObject
 {
     private readonly SearchHistory _history;
+
+    // Backing collections — never cleared/rebuilt, only targeted mutations
+    private readonly ObservableCollection<string> _jobTitleColl = [];
+    private readonly ObservableCollection<string> _locationColl = [];
+    private readonly ObservableCollection<string> _keywordsColl = [];
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
@@ -33,33 +40,41 @@ public partial class SearchViewModel : ObservableObject
     [ObservableProperty] private bool _linkedInEasyApplyOnly = true;
     [ObservableProperty] private bool _indeedApplyOnly       = true;
 
-    public ObservableCollection<string> JobTitleSuggestions { get; } = [];
-    public ObservableCollection<string> LocationSuggestions { get; } = [];
-    public ObservableCollection<string> KeywordsSuggestions { get; } = [];
+    // ICollectionView lets us re-filter via Refresh() without touching
+    // the underlying collection — avoids the ItemsControl inconsistency
+    public ICollectionView JobTitleSuggestions { get; }
+    public ICollectionView LocationSuggestions { get; }
+    public ICollectionView KeywordsSuggestions { get; }
 
     public event Action<SearchConfig>? StartRequested;
 
     public SearchViewModel()
     {
         _history = SearchHistoryService.Load();
-        Populate(JobTitleSuggestions, _history.JobTitles, "");
-        Populate(LocationSuggestions, _history.Locations, "");
-        Populate(KeywordsSuggestions, _history.Keywords,  "");
+
+        foreach (var s in _history.JobTitles) _jobTitleColl.Add(s);
+        foreach (var s in _history.Locations) _locationColl.Add(s);
+        foreach (var s in _history.Keywords)  _keywordsColl.Add(s);
+
+        JobTitleSuggestions = CollectionViewSource.GetDefaultView(_jobTitleColl);
+        LocationSuggestions = CollectionViewSource.GetDefaultView(_locationColl);
+        KeywordsSuggestions = CollectionViewSource.GetDefaultView(_keywordsColl);
+
+        JobTitleSuggestions.Filter = o => Matches(o, JobTitle);
+        LocationSuggestions.Filter = o => Matches(o, Location);
+        KeywordsSuggestions.Filter = o => Matches(o, Keywords);
     }
 
-    // Filter suggestions live as the user types
-    partial void OnJobTitleChanged(string value) => Populate(JobTitleSuggestions, _history.JobTitles, value);
-    partial void OnLocationChanged(string value) => Populate(LocationSuggestions, _history.Locations, value);
-    partial void OnKeywordsChanged(string value) => Populate(KeywordsSuggestions, _history.Keywords,  value);
+    // Refresh the filter whenever the bound text changes — single atomic Reset,
+    // no add/remove events on the collection itself
+    partial void OnJobTitleChanged(string value) => JobTitleSuggestions.Refresh();
+    partial void OnLocationChanged(string value) => LocationSuggestions.Refresh();
+    partial void OnKeywordsChanged(string value) => KeywordsSuggestions.Refresh();
 
-    private static void Populate(ObservableCollection<string> target, List<string> source, string filter)
-    {
-        target.Clear();
-        var matches = string.IsNullOrWhiteSpace(filter)
-            ? source
-            : source.Where(s => s.Contains(filter, StringComparison.OrdinalIgnoreCase));
-        foreach (var s in matches) target.Add(s);
-    }
+    private static bool Matches(object? item, string text) =>
+        item is string s &&
+        (string.IsNullOrWhiteSpace(text) ||
+         s.Contains(text, StringComparison.OrdinalIgnoreCase));
 
     public string ValidationMessage
     {
@@ -83,27 +98,43 @@ public partial class SearchViewModel : ObservableObject
         if (UseLinkedIn) sites.Add("linkedin");
         if (UseIndeed)   sites.Add("indeed");
 
-        // Persist history entries (most-recent first, deduped)
-        SearchHistoryService.AddEntry(_history.JobTitles, JobTitle.Trim());
-        SearchHistoryService.AddEntry(_history.Locations, Location.Trim());
-        SearchHistoryService.AddEntry(_history.Keywords,  Keywords.Trim());
+        var jt = JobTitle.Trim();
+        var lo = Location.Trim();
+        var kw = Keywords.Trim();
+
+        SearchHistoryService.AddEntry(_history.JobTitles, jt);
+        SearchHistoryService.AddEntry(_history.Locations, lo);
+        SearchHistoryService.AddEntry(_history.Keywords,  kw);
         SearchHistoryService.Save(_history);
 
-        // Refresh so the saved entry appears next time the dropdown opens
-        Populate(JobTitleSuggestions, _history.JobTitles, "");
-        Populate(LocationSuggestions, _history.Locations, "");
-        Populate(KeywordsSuggestions, _history.Keywords,  "");
+        // Push new entries into the backing collections without clearing them
+        PushToFront(_jobTitleColl, _history.JobTitles);
+        PushToFront(_locationColl, _history.Locations);
+        PushToFront(_keywordsColl, _history.Keywords);
 
         StartRequested?.Invoke(new SearchConfig
         {
-            JobTitle              = JobTitle.Trim(),
-            Location              = Location.Trim(),
-            Keywords              = Keywords.Trim(),
+            JobTitle              = jt,
+            Location              = lo,
+            Keywords              = kw,
             Sites                 = sites,
             MinScore              = MinScore,
             MaxJobsPerSite        = MaxJobsPerSite,
             LinkedInEasyApplyOnly = LinkedInEasyApplyOnly,
             IndeedApplyOnly       = IndeedApplyOnly
         });
+    }
+
+    // Sync collection to match source by moving/inserting/trimming — no Clear()
+    private static void PushToFront(ObservableCollection<string> coll, List<string> source)
+    {
+        if (source.Count == 0) return;
+        var newest = source[0];
+        var idx = coll.IndexOf(newest);
+        if (idx == 0) return;                  // already at top
+        if (idx > 0) coll.Move(idx, 0);        // move existing entry to front
+        else          coll.Insert(0, newest);  // brand-new entry
+        while (coll.Count > source.Count)
+            coll.RemoveAt(coll.Count - 1);
     }
 }

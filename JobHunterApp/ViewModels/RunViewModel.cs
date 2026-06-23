@@ -103,6 +103,22 @@ public partial class RunViewModel : ObservableObject
 
     public async Task RunAsync(SearchConfig config)
     {
+        try
+        {
+            await RunCoreAsync(config);
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌  Unexpected error: {ex.Message}");
+            AddLog($"    {ex.GetType().Name}");
+            if (ex.InnerException is not null)
+                AddLog($"    Inner: {ex.InnerException.Message}");
+            Finish();
+        }
+    }
+
+    private async Task RunCoreAsync(SearchConfig config)
+    {
         IsRunning   = true;
         CurrentStep = RunStep.Scraping;
         StatusText  = "Scraping jobs…";

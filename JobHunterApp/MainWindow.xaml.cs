@@ -38,6 +38,15 @@ public partial class MainWindow : Window
     {
         MainTabs.SelectedIndex = 2;
         if (!_runVm.IsRunning)
-            _ = _runVm.RunAsync(config);
+        {
+            _runVm.RunAsync(config).ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                    Dispatcher.Invoke(() =>
+                        MessageBox.Show(
+                            $"Run failed unexpectedly:\n\n{t.Exception?.InnerException?.Message ?? t.Exception?.Message}",
+                            "Job Hunter", MessageBoxButton.OK, MessageBoxImage.Error));
+            }, TaskContinuationOptions.OnlyOnFaulted);
+        }
     }
 }

@@ -170,12 +170,13 @@ public partial class RunViewModel : ObservableObject
         IBrowserContext? browser = null;
         try
         {
-            browser = await BrowserService.CreateContextAsync(appConfig);
+            browser = await BrowserService.CreateContextAsync(appConfig, progress);
         }
         catch (Exception ex)
         {
             AddLog($"❌  Failed to launch browser: {ex.Message}");
-            AddLog("    Try running: dotnet tool install --global Microsoft.Playwright.CLI && playwright install chromium");
+            AddLog("    Make sure Playwright browsers are installed: cd JobHunterApp && playwright install chromium");
+            AddLog("    Or switch to 'Use my browser' mode in Setup and launch Chrome with --remote-debugging-port=9222.");
             Finish();
             return;
         }

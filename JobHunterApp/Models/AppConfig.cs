@@ -8,7 +8,7 @@ public class AppConfig
     public string      ApiKey      { get; set; } = "";
     public string      GeminiModel { get; set; } = "gemini-2.0-flash-lite";
     public int         GeminiRpm   { get; set; } = 15;
-    public BrowserMode      BrowserMode      { get; set; } = BrowserMode.ConnectToBrowser;
+    public BrowserMode      BrowserMode      { get; set; } = BrowserMode.Managed;
     public PreferredBrowser PreferredBrowser { get; set; } = PreferredBrowser.Chrome;
     public int              CdpPort          { get; set; } = 9222;
     public FileEntry?  Cv          { get; set; }

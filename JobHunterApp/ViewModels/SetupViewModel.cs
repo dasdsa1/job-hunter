@@ -14,7 +14,7 @@ public partial class SetupViewModel : ObservableObject
     [ObservableProperty] private string      _apiKey       = "";
     [ObservableProperty] private string      _geminiModel  = "gemini-2.0-flash-lite";
     [ObservableProperty] private int         _geminiRpm    = 15;
-    [ObservableProperty] private BrowserMode      _browserMode      = BrowserMode.ConnectToBrowser;
+    [ObservableProperty] private BrowserMode      _browserMode      = BrowserMode.Managed;
     [ObservableProperty] private PreferredBrowser _preferredBrowser = PreferredBrowser.Chrome;
     [ObservableProperty] private int              _cdpPort          = 9222;
     [ObservableProperty] private string      _cvPath       = "";

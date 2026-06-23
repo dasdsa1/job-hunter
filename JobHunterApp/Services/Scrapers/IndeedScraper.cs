@@ -18,7 +18,15 @@ public static class IndeedScraper
             await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 30_000 });
 
             if (page.Url.Contains("/account/login") || page.Url.Contains("/promo/resume"))
-                log.Report("Possible Indeed login wall — please log in in the browser window.");
+            {
+                log.Report("🔐  Please log in to Indeed in the browser window.");
+                log.Report("    The job hunt will continue automatically once you are logged in.");
+                await page.WaitForURLAsync(
+                    u => !u.Contains("/account/login") && !u.Contains("/promo/resume"),
+                    new() { Timeout = 0 });
+                log.Report("✔  Logged in to Indeed.");
+                await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+            }
 
             await page.WaitForSelectorAsync(
                 "[data-jk], .jobsearch-ResultsList li",

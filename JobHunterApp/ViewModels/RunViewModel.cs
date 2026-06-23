@@ -181,15 +181,41 @@ public partial class RunViewModel : ObservableObject
             return;
         }
 
-        var allJobs = new List<JobListing>();
-        try
+        // Stop cleanly if the user closes the browser window at any point
+        var browserClosed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        browser.Close += (_, _) =>
         {
+            browserClosed.TrySetResult(true);
+            AddLog("\n🛑  Browser was closed — stopping the job hunt.");
+            // Unblock any pending job-selection or interaction so the run exits
+            _applySelectionTcs?.TrySetResult([]);
+            if (PendingInteraction is CvChoiceRequest cv)     cv.Tcs.TrySetResult(false);
+            if (PendingInteraction is LetterChoiceRequest lc) lc.Tcs.TrySetResult([]);
+            if (PendingInteraction is ReviewRequest rev)      rev.Tcs.TrySetResult(false);
+        };
+
+        var allJobs = new List<JobListing>();
+        {
+            var scrapeTasks = new List<Task<List<JobListing>>>();
             if (config.Sites.Contains("linkedin"))
-                allJobs.AddRange(await LinkedInScraper.ScrapeAsync(browser, config, progress));
+                scrapeTasks.Add(LinkedInScraper.ScrapeAsync(browser, config, progress));
             if (config.Sites.Contains("indeed"))
-                allJobs.AddRange(await IndeedScraper.ScrapeAsync(browser, config, progress));
+                scrapeTasks.Add(IndeedScraper.ScrapeAsync(browser, config, progress));
+
+            var scrapeAll = Task.WhenAll(scrapeTasks);
+            await Task.WhenAny(scrapeAll, browserClosed.Task);
+
+            if (browserClosed.Task.IsCompleted)
+            {
+                // Suppress any Playwright exceptions from the abandoned scrape tasks
+                _ = scrapeAll.ContinueWith(_ => { }, TaskContinuationOptions.None);
+                Finish();
+                return;
+            }
+
+            try   { allJobs.AddRange((await scrapeAll).SelectMany(r => r)); }
+            catch (Exception ex) { AddLog($"Scraping error: {ex.Message}"); }
         }
-        catch (Exception ex) { AddLog($"Scraping error: {ex.Message}"); }
 
         if (allJobs.Count == 0)
         {
@@ -246,9 +272,12 @@ public partial class RunViewModel : ObservableObject
         }
 
         _applySelectionTcs = new TaskCompletionSource<List<JobMatch>>();
-        var selected = await _applySelectionTcs.Task;
+        var selectionTask = _applySelectionTcs.Task;
+        await Task.WhenAny(selectionTask, browserClosed.Task);
         _applySelectionTcs = null;
+        if (browserClosed.Task.IsCompleted) { Finish(); return; }
 
+        var selected = await selectionTask;
         if (selected.Count == 0)
         {
             AddLog("No jobs selected.");

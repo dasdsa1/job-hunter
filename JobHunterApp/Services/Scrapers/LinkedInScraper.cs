@@ -19,10 +19,13 @@ public static class LinkedInScraper
 
             if (page.Url.Contains("/login") || page.Url.Contains("/authwall"))
             {
-                log.Report("Not logged in to LinkedIn — please log in in the browser window.");
-                // Wait up to 2 minutes for the user to log in
-                await page.WaitForURLAsync(u => !u.Contains("/login") && !u.Contains("/authwall"),
-                    new() { Timeout = 120_000 });
+                log.Report("🔐  Please log in to LinkedIn in the browser window.");
+                log.Report("    The job hunt will continue automatically once you are logged in.");
+                // Timeout = 0 means wait indefinitely — no automatic close
+                await page.WaitForURLAsync(
+                    u => !u.Contains("/login") && !u.Contains("/authwall"),
+                    new() { Timeout = 0 });
+                log.Report("✔  Logged in to LinkedIn.");
                 await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
             }
 

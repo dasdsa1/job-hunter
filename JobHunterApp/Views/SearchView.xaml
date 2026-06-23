@@ -20,9 +20,11 @@
 
                     <TextBlock Text="Job title" Foreground="{StaticResource TextSecondaryBrush}"
                                FontSize="11" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding JobTitle, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,0,12"
-                             ToolTip="The role you are looking for, e.g. 'Software Engineer' or 'Product Manager'"/>
+                    <ComboBox Style="{StaticResource AutoComboBox}"
+                              Text="{Binding JobTitle, UpdateSourceTrigger=PropertyChanged}"
+                              ItemsSource="{Binding JobTitleSuggestions}"
+                              Margin="0,0,0,12"
+                              ToolTip="The role you are looking for, e.g. 'Software Engineer' or 'Product Manager'"/>
 
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
@@ -33,14 +35,18 @@
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="Location" Foreground="{StaticResource TextSecondaryBrush}"
                                        FontSize="11" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding Location, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="City, country, or 'Remote'. Used to filter job results on each site."/>
+                            <ComboBox Style="{StaticResource AutoComboBox}"
+                                      Text="{Binding Location, UpdateSourceTrigger=PropertyChanged}"
+                                      ItemsSource="{Binding LocationSuggestions}"
+                                      ToolTip="City, country, or 'Remote'. Used to filter job results on each site."/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="Keywords (optional)" Foreground="{StaticResource TextSecondaryBrush}"
                                        FontSize="11" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding Keywords, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Extra words added to the search query, e.g. 'React TypeScript'. Leave blank to search by job title only."/>
+                            <ComboBox Style="{StaticResource AutoComboBox}"
+                                      Text="{Binding Keywords, UpdateSourceTrigger=PropertyChanged}"
+                                      ItemsSource="{Binding KeywordsSuggestions}"
+                                      ToolTip="Extra words added to the search query, e.g. 'React TypeScript'. Leave blank to search by job title only."/>
                         </StackPanel>
                     </Grid>
 

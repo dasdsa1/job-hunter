@@ -1,11 +1,15 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JobHunterApp.Models;
+using JobHunterApp.Services;
 
 namespace JobHunterApp.ViewModels;
 
 public partial class SearchViewModel : ObservableObject
 {
+    private readonly SearchHistory _history;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
     [NotifyPropertyChangedFor(nameof(ValidationMessage))]
@@ -29,7 +33,33 @@ public partial class SearchViewModel : ObservableObject
     [ObservableProperty] private bool _linkedInEasyApplyOnly = true;
     [ObservableProperty] private bool _indeedApplyOnly       = true;
 
+    public ObservableCollection<string> JobTitleSuggestions { get; } = [];
+    public ObservableCollection<string> LocationSuggestions { get; } = [];
+    public ObservableCollection<string> KeywordsSuggestions { get; } = [];
+
     public event Action<SearchConfig>? StartRequested;
+
+    public SearchViewModel()
+    {
+        _history = SearchHistoryService.Load();
+        Populate(JobTitleSuggestions, _history.JobTitles, "");
+        Populate(LocationSuggestions, _history.Locations, "");
+        Populate(KeywordsSuggestions, _history.Keywords,  "");
+    }
+
+    // Filter suggestions live as the user types
+    partial void OnJobTitleChanged(string value) => Populate(JobTitleSuggestions, _history.JobTitles, value);
+    partial void OnLocationChanged(string value) => Populate(LocationSuggestions, _history.Locations, value);
+    partial void OnKeywordsChanged(string value) => Populate(KeywordsSuggestions, _history.Keywords,  value);
+
+    private static void Populate(ObservableCollection<string> target, List<string> source, string filter)
+    {
+        target.Clear();
+        var matches = string.IsNullOrWhiteSpace(filter)
+            ? source
+            : source.Where(s => s.Contains(filter, StringComparison.OrdinalIgnoreCase));
+        foreach (var s in matches) target.Add(s);
+    }
 
     public string ValidationMessage
     {
@@ -52,6 +82,17 @@ public partial class SearchViewModel : ObservableObject
         var sites = new List<string>();
         if (UseLinkedIn) sites.Add("linkedin");
         if (UseIndeed)   sites.Add("indeed");
+
+        // Persist history entries (most-recent first, deduped)
+        SearchHistoryService.AddEntry(_history.JobTitles, JobTitle.Trim());
+        SearchHistoryService.AddEntry(_history.Locations, Location.Trim());
+        SearchHistoryService.AddEntry(_history.Keywords,  Keywords.Trim());
+        SearchHistoryService.Save(_history);
+
+        // Refresh so the saved entry appears next time the dropdown opens
+        Populate(JobTitleSuggestions, _history.JobTitles, "");
+        Populate(LocationSuggestions, _history.Locations, "");
+        Populate(KeywordsSuggestions, _history.Keywords,  "");
 
         StartRequested?.Invoke(new SearchConfig
         {

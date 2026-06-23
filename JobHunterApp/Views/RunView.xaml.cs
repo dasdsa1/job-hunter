@@ -1,5 +1,6 @@
 using System.Collections.Specialized;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using JobHunterApp.ViewModels;
 
 namespace JobHunterApp.Views;
@@ -11,14 +12,18 @@ public partial class RunView : UserControl
         InitializeComponent();
         DataContext = vm;
 
-        // Use e.NewItems[0] (the added item itself) instead of LogList.Items[^1].
-        // Accessing Items[^1] during CollectionChanged forces a layout/measure pass;
-        // if another Dispatcher.Invoke fires during that measure (re-entrant), the
-        // ListBox item count gets out of sync → InvalidOperationException.
+        // Both Log.Add (in AddLog) and ScrollIntoView run at Background priority (4),
+        // which is below Render (7). WPF layout at Render always completes before the
+        // next Background item fires, so VirtualizingStackPanel.MeasureChild never sees
+        // a mid-add collection state → no more "ItemsControl inconsistent" crash.
         vm.Log.CollectionChanged += (_, e) =>
         {
             if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems?.Count > 0)
-                LogList.ScrollIntoView(e.NewItems[0]);
+            {
+                var item = e.NewItems[0];
+                Dispatcher.BeginInvoke(DispatcherPriority.Background,
+                    () => LogList.ScrollIntoView(item));
+            }
         };
     }
 }

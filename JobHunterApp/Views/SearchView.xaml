@@ -101,10 +101,26 @@
                 </StackPanel>
             </Border>
 
-            <Button Content="Start Job Hunt →" Command="{Binding StartCommand}"
-                    Style="{StaticResource SuccessButton}" Padding="24,12" FontSize="15"
-                    HorizontalAlignment="Left"
-                    ToolTip="Scrape jobs, score them with AI, then walk you through applying to the ones you select."/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="Start Job Hunt →" Command="{Binding StartCommand}"
+                        Style="{StaticResource SuccessButton}" Padding="24,12" FontSize="15"
+                        ToolTip="Scrape jobs, score them with AI, then walk you through applying to the ones you select."/>
+                <TextBlock Text="{Binding ValidationMessage}"
+                           Foreground="{StaticResource WarningBrush}"
+                           FontSize="12" VerticalAlignment="Center"
+                           Margin="16,0,0,0" TextWrapping="Wrap" MaxWidth="260">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ValidationMessage}" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
 
         </StackPanel>
     </ScrollViewer>

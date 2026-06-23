@@ -1,0 +1,45 @@
+<Window x:Class="JobHunterApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Job Hunter" Height="780" Width="1200"
+        MinHeight="600" MinWidth="900"
+        Background="{StaticResource BackgroundBrush}"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title bar -->
+        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <DockPanel Margin="24,14">
+                <TextBlock Text="Job Hunter" FontSize="16" FontWeight="Bold"
+                           Foreground="{StaticResource AccentBrush}"/>
+                <TextBlock Text="  —  Automated job search &amp; application assistant"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           VerticalAlignment="Center" FontSize="13"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Tab strip -->
+        <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <TabControl x:Name="MainTabs" SelectionChanged="MainTabs_SelectionChanged"
+                        Background="Transparent" BorderThickness="0">
+                <TabControl.ContentTemplate>
+                    <DataTemplate/>
+                </TabControl.ContentTemplate>
+                <TabItem Header="⚙  Setup"  Tag="setup"/>
+                <TabItem Header="🔍  Search" Tag="search"/>
+                <TabItem Header="▶  Run"    Tag="run"/>
+            </TabControl>
+        </Border>
+
+        <!-- Content area -->
+        <ContentControl Grid.Row="2" x:Name="ContentArea"/>
+    </Grid>
+</Window>

@@ -2,11 +2,14 @@ import { BrowserContext, Page } from 'playwright';
 import chalk from 'chalk';
 import ora from 'ora';
 import { JobMatch } from '../types.js';
+import { FileEntry } from '../fileConfig.js';
 import { waitForUser } from '../scrapers/browser.js';
+import { tryUploadLetters } from './uploadLetters.js';
 
 export async function applyIndeed(
   context: BrowserContext,
   jobMatch: JobMatch,
+  letters: FileEntry[] = [],
 ): Promise<boolean> {
   const { job, coverLetter } = jobMatch;
 
@@ -36,6 +39,7 @@ export async function applyIndeed(
     await page.waitForTimeout(2_000);
 
     await fillIndeedForm(page, coverLetter ?? '');
+    await tryUploadLetters(page, letters);
 
     console.log(chalk.green('\n✔  Form pre-filled. Please review the application in the browser.'));
     console.log(chalk.bold.yellow('⚠  Do NOT submit yet — review everything first.\n'));

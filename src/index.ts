@@ -7,22 +7,34 @@ import { scrapeLinkedIn } from './scrapers/linkedin.js';
 import { scrapeIndeed } from './scrapers/indeed.js';
 import { matchJobs } from './matcher.js';
 import { generateCoverLetter } from './coverLetter.js';
+import { tailorCv, saveTailoredCvAsDocx } from './cvTailor.js';
 import { applyLinkedIn } from './applicator/linkedin.js';
 import { applyIndeed } from './applicator/indeed.js';
 import { generateReport } from './reporter.js';
+import { loadConfig, FileEntry } from './fileConfig.js';
+import { parseFile } from './resume.js';
 import { SearchConfig, JobMatch, RunReport } from './types.js';
 
 async function main() {
   printBanner();
   validateEnv();
 
-  // ── 1. Resume ──────────────────────────────────────────────────────────────
+  // ── 1. CV + letters ────────────────────────────────────────────────────────
   const resume = await collectResume();
   if (!resume) {
-    console.log(chalk.red('No resume provided. Exiting.'));
+    console.log(chalk.red('No CV provided. Exiting.'));
     process.exit(1);
   }
-  console.log(chalk.green(`\n✔  Resume captured (${resume.length} chars)\n`));
+
+  const fileConfig = loadConfig();
+  const allLetters = fileConfig.letters ?? [];
+
+  // Pre-parse letter texts for cover letter generation
+  const letterTexts = await Promise.all(
+    allLetters.map(async (l) => {
+      try { return await parseFile(l.path); } catch { return ''; }
+    }),
+  );
 
   // ── 2. Search config ───────────────────────────────────────────────────────
   const config = await promptSearchConfig();
@@ -108,9 +120,56 @@ async function main() {
     console.log(chalk.cyan(`\n▶  ${jm.job.title} @ ${jm.job.company}`));
     console.log(chalk.gray(`   Score: ${jm.match.score}/10 — ${jm.match.summary}`));
 
+    // CV choice — original or tailored
+    const { cvChoice } = await inquirer.prompt<{ cvChoice: 'default' | 'tailor' }>([
+      {
+        type: 'list',
+        name: 'cvChoice',
+        message: 'Which CV do you want to use for this application?',
+        choices: [
+          { name: 'Use my default CV', value: 'default' },
+          { name: 'Create a tailored CV for this job (AI-generated)', value: 'tailor' },
+        ],
+      },
+    ]);
+
+    let activeResume = resume;
+    if (cvChoice === 'tailor') {
+      activeResume = await tailorCv(resume, jm.job, jm.match);
+      const docxPath = await saveTailoredCvAsDocx(activeResume, jm.job);
+      console.log(chalk.gray(`   Tailored CV saved → ${docxPath}`));
+    }
+
+    // Letter selection
+    let selectedLetters: FileEntry[] = [];
+    if (allLetters.length > 0) {
+      const { letterKeys } = await inquirer.prompt<{ letterKeys: string[] }>([
+        {
+          type: 'checkbox',
+          name: 'letterKeys',
+          message: 'Include recommendation letters for this application?',
+          choices: allLetters.map((l) => ({
+            name: `${l.label || l.key}  (${l.key})`,
+            value: l.key,
+            checked: false,
+          })),
+        },
+      ]);
+      selectedLetters = allLetters.filter((l) => letterKeys.includes(l.key));
+    }
+
+    const selectedLetterTexts = selectedLetters.map(
+      (l) => letterTexts[allLetters.indexOf(l)] ?? '',
+    );
+
     // Generate cover letter
     console.log(chalk.bold('\n── Cover Letter ──'));
-    jm.coverLetter = await generateCoverLetter(jm.job, jm.match, resume);
+    jm.coverLetter = await generateCoverLetter(
+      jm.job,
+      jm.match,
+      activeResume,
+      selectedLetterTexts,
+    );
 
     // Confirm before proceeding
     const { proceed } = await inquirer.prompt<{ proceed: boolean }>([
@@ -130,9 +189,9 @@ async function main() {
     // Launch the apply flow
     let success = false;
     if (jm.job.source === 'linkedin') {
-      success = await applyLinkedIn(context, jm);
+      success = await applyLinkedIn(context, jm, selectedLetters);
     } else {
-      success = await applyIndeed(context, jm);
+      success = await applyIndeed(context, jm, selectedLetters);
     }
 
     jm.applied = success;

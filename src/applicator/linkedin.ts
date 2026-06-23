@@ -2,11 +2,14 @@ import { BrowserContext, Page } from 'playwright';
 import chalk from 'chalk';
 import ora from 'ora';
 import { JobMatch } from '../types.js';
+import { FileEntry } from '../fileConfig.js';
 import { waitForUser } from '../scrapers/browser.js';
+import { tryUploadLetters } from './uploadLetters.js';
 
 export async function applyLinkedIn(
   context: BrowserContext,
   jobMatch: JobMatch,
+  letters: FileEntry[] = [],
 ): Promise<boolean> {
   const { job, coverLetter } = jobMatch;
 
@@ -37,6 +40,7 @@ export async function applyLinkedIn(
     await page.waitForTimeout(1_500);
 
     await fillModalSteps(page, coverLetter ?? '');
+    await tryUploadLetters(page, letters);
 
     console.log(chalk.green('\n✔  Form pre-filled. Please review each step in the browser.'));
     console.log(chalk.bold.yellow('⚠  Do NOT click Submit yet — review everything first.\n'));

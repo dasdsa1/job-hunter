@@ -11,8 +11,13 @@ export async function generateCoverLetter(
   job: JobListing,
   match: MatchResult,
   resume: string,
+  recommendationSnippets: string[] = [],
 ): Promise<string> {
   const spinner = ora(`Generating cover letter for ${job.title} @ ${job.company}…`).start();
+
+  const lettersSection = recommendationSnippets.length
+    ? `\nRecommendation letter excerpts (reference these where relevant):\n${recommendationSnippets.map((s, i) => `[Letter ${i + 1}]: ${s.slice(0, 400)}`).join('\n')}\n`
+    : '';
 
   const prompt = `Write a compelling, concise cover letter for the following job application.
 
@@ -21,7 +26,7 @@ Company: ${job.company}
 Location: ${job.location}
 Why I'm a good fit (AI analysis): ${match.summary}
 Key matching reasons: ${match.reasons.join('; ')}
-
+${lettersSection}
 Job Description (excerpt):
 ${job.description.slice(0, 1_500)}
 

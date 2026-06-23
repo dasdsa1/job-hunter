@@ -1,0 +1,200 @@
+<UserControl x:Class="JobHunterApp.Views.RunView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:JobHunterApp.ViewModels"
+             Background="{StaticResource BackgroundBrush}">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis"/>
+    </UserControl.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="{Binding StatusText}" FontSize="16" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+            <Button DockPanel.Dock="Right" Content="Open Report"
+                    Command="{Binding OpenReportCommand}"
+                    Style="{StaticResource SecondaryButton}" Padding="12,6"
+                    Visibility="{Binding ReportPath, Converter={StaticResource BoolVis},
+                                 ConverterParameter=null}"
+                    IsEnabled="{Binding ReportPath, Converter={StaticResource BoolVis}}"/>
+        </DockPanel>
+
+        <!-- Main area: log left, jobs/interaction right -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0.42*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="0.58*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Log panel -->
+            <Border Grid.Column="0" Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="LOG" FontSize="10" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Margin="12,10,0,6"/>
+                    <ListBox Grid.Row="1" x:Name="LogList"
+                             ItemsSource="{Binding Log}"
+                             BorderThickness="0" Background="Transparent"
+                             Margin="4,0,4,8" FontFamily="Consolas" FontSize="11"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                </Grid>
+            </Border>
+
+            <!-- Right panel — switches between job list, interaction panel -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Job results DataGrid -->
+                <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        CornerRadius="8" Padding="0"
+                        Visibility="{Binding Jobs.Count, Converter={StaticResource BoolVis}}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="MATCHED JOBS" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Margin="14,10,0,6"/>
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding Jobs}"
+                                  BorderThickness="0" Margin="0,0,0,0">
+                            <DataGrid.Columns>
+                                <DataGridCheckBoxColumn Header="✓" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="36"/>
+                                <DataGridTextColumn Header="Score"   Binding="{Binding Match.Score, StringFormat={}{0}/10}" Width="56" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Title"   Binding="{Binding Job.Title}"   Width="*"   IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Company" Binding="{Binding Job.Company}" Width="120" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Source"  Binding="{Binding Job.Source}"  Width="70"  IsReadOnly="True"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <!-- Apply button (shown during SelectingJobs step) -->
+                <Border Grid.Row="1" Margin="0,10,0,0"
+                        Visibility="{Binding IsRunning, Converter={StaticResource BoolVis}}">
+                    <StackPanel>
+
+                        <!-- SelectingJobs: Apply to selected -->
+                        <Button Content="Apply to Selected Jobs →"
+                                Command="{Binding ApplyToSelectedCommand}"
+                                Style="{StaticResource SuccessButton}" Padding="16,10"
+                                HorizontalAlignment="Stretch"
+                                Margin="0,0,0,8"/>
+
+                        <!-- CV choice panel -->
+                        <Border Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                                CornerRadius="8" Padding="16">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PendingInteraction}" Value="{x:Type vm:CvChoiceRequest}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock FontWeight="SemiBold" Margin="0,0,0,10">
+                                    <Run Text="CV for: "/>
+                                    <Run Text="{Binding PendingInteraction.(vm:CvChoiceRequest.JobTitle), FallbackValue=''}"
+                                         Foreground="{StaticResource AccentBrush}"/>
+                                </TextBlock>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Use Default CV" Command="{Binding UseDefaultCvCommand}"
+                                            Style="{StaticResource SecondaryButton}" Margin="0,0,8,0"/>
+                                    <Button Content="Tailor CV with AI" Command="{Binding UseTailoredCvCommand}"
+                                            Style="{StaticResource PrimaryButton}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Letter choice panel -->
+                        <Border Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                                CornerRadius="8" Padding="16">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PendingInteraction}" Value="{x:Type vm:LetterChoiceRequest}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock Text="Include recommendation letters?" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <ItemsControl ItemsSource="{Binding PendingInteraction.(vm:LetterChoiceRequest.Available), FallbackValue={x:Null}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Content="{Binding Label}" IsChecked="{Binding IsSelected}"
+                                                      Margin="0,0,0,6"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Content="Continue →" Command="{Binding ConfirmLettersCommand}"
+                                        Style="{StaticResource PrimaryButton}" Margin="0,10,0,0"
+                                        HorizontalAlignment="Left"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Cover letter preview + review panel -->
+                        <Border Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                                CornerRadius="8" Padding="16" MaxHeight="300">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PendingInteraction}" Value="{x:Type vm:ReviewRequest}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock Text="{Binding PendingInteraction.(vm:ReviewRequest.Message), FallbackValue=''}"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto"
+                                              Margin="0,0,0,10">
+                                    <TextBlock Text="{Binding CoverLetterPreview}"
+                                               TextWrapping="Wrap" FontSize="11"
+                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </ScrollViewer>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Proceed →" Command="{Binding ProceedWithApplicationCommand}"
+                                            Style="{StaticResource SuccessButton}" Margin="0,0,8,0"/>
+                                    <Button Content="Skip" Command="{Binding SkipApplicationCommand}"
+                                            Style="{StaticResource SecondaryButton}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

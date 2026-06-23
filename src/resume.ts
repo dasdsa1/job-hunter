@@ -1,34 +1,58 @@
-import readline from 'readline';
+import fs from 'fs';
+import path from 'path';
 import chalk from 'chalk';
+import inquirer from 'inquirer';
+import mammoth from 'mammoth';
+import { createRequire } from 'module';
+import { loadConfig } from './fileConfig.js';
+
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>;
 
 export async function collectResume(): Promise<string> {
-  console.log(chalk.cyan('\n━━━  RESUME INPUT  ━━━'));
-  console.log(chalk.white('Paste your resume text below.'));
-  console.log(chalk.gray('When finished, type  ---END---  on its own line and press Enter.\n'));
+  const config = loadConfig();
 
-  const lines: string[] = [];
+  if (config.cv) {
+    if (!fs.existsSync(config.cv.path)) {
+      console.log(chalk.red(`\n✖  Saved CV not found at: ${config.cv.path}`));
+      console.log(chalk.yellow('   Run  npm run setup  to update the path.\n'));
+      process.exit(1);
+    }
+    console.log(chalk.green(`\n✔  Using saved CV: ${path.basename(config.cv.path)}`));
+    return parseFile(config.cv.path);
+  }
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    terminal: true,
-  });
+  // Fallback: manual path entry if no config saved yet
+  console.log(chalk.yellow('\nNo CV configured. Run  npm run setup  to set one up, or enter a path now.'));
 
-  return new Promise((resolve) => {
-    rl.on('line', (line) => {
-      if (line.trim() === '---END---') {
-        rl.close();
-      } else {
-        lines.push(line);
-      }
-    });
+  const { filePath } = await inquirer.prompt<{ filePath: string }>([
+    {
+      type: 'input',
+      name: 'filePath',
+      message: 'Path to your CV file (.pdf or .docx):',
+      validate: (v) => {
+        const p = v.trim();
+        if (!p) return 'Required';
+        if (!fs.existsSync(p)) return `File not found: ${p}`;
+        const ext = path.extname(p).toLowerCase();
+        if (ext !== '.pdf' && ext !== '.docx') return 'Only .pdf and .docx files are supported';
+        return true;
+      },
+    },
+  ]);
 
-    rl.on('close', () => {
-      const resume = lines.join('\n').trim();
-      if (resume.length < 50) {
-        console.log(chalk.red('Resume seems too short. Make sure you pasted the full text.'));
-      }
-      resolve(resume);
-    });
-  });
+  return parseFile(path.resolve(filePath.trim()));
+}
+
+export async function parseFile(filePath: string): Promise<string> {
+  const ext = path.extname(filePath).toLowerCase();
+  const buffer = fs.readFileSync(filePath);
+
+  if (ext === '.pdf') {
+    const data = await pdfParse(buffer);
+    return data.text.trim();
+  }
+
+  const result = await mammoth.extractRawText({ path: filePath });
+  return result.value.trim();
 }

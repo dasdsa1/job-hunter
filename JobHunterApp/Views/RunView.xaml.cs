@@ -13,20 +13,15 @@ public partial class RunView : UserControl
         InitializeComponent();
         DataContext = vm;
 
-        vm.Log.CollectionChanged += (_, e) =>
+        vm.Log.CollectionChanged += (_, _) =>
         {
-            if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems?.Count > 0)
-            {
-                var item = e.NewItems[0];
-                Dispatcher.BeginInvoke(DispatcherPriority.Background,
-                    () => LogList.ScrollIntoView(item));
-            }
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, () => LogBox.ScrollToEnd());
         };
     }
 
     private void CopyLog_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not RunViewModel vm || vm.Log.Count == 0) return;
-        Clipboard.SetText(string.Join(Environment.NewLine, vm.Log));
+        if (LogBox.Text.Length > 0)
+            Clipboard.SetText(LogBox.Text);
     }
 }

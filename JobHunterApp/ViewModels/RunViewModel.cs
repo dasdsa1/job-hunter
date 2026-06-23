@@ -47,8 +47,16 @@ public partial class RunViewModel : ObservableObject
     [ObservableProperty] private string              _coverLetterPreview = "";
     [ObservableProperty] private string?             _reportPath;
 
-    public ObservableCollection<string>    Log     { get; } = [];
-    public ObservableCollection<JobMatch>  Jobs    { get; } = [];
+    public ObservableCollection<string>   Log     { get; } = [];
+    public ObservableCollection<JobMatch> Jobs    { get; } = [];
+
+    // Single string bound to the log TextBox — rebuilt whenever a line is added/cleared.
+    public string LogText => string.Join(Environment.NewLine, Log);
+
+    public RunViewModel()
+    {
+        Log.CollectionChanged += (_, _) => OnPropertyChanged(nameof(LogText));
+    }
 
     // ── Interaction responses ────────────────────────────────────────────────
 

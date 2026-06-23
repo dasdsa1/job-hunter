@@ -58,36 +58,16 @@
                                 FontSize="11" Click="CopyLog_Click"
                                 ToolTip="Copy all log entries to clipboard"/>
                     </Grid>
-                    <ListBox Grid.Row="1" x:Name="LogList"
-                             ItemsSource="{Binding Log}"
+                    <TextBox Grid.Row="1" x:Name="LogBox"
+                             Text="{Binding LogText, Mode=OneWay}"
+                             IsReadOnly="True" IsReadOnlyCaretVisible="True"
+                             TextWrapping="Wrap" AcceptsReturn="True"
                              BorderThickness="0" Background="Transparent"
-                             Margin="4,0,4,8" FontFamily="Consolas" FontSize="11"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                        <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem">
-                                <Setter Property="Padding" Value="4,1"/>
-                                <Setter Property="Background" Value="Transparent"/>
-                                <Setter Property="BorderThickness" Value="0"/>
-                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="ListBoxItem">
-                                            <TextBox Text="{Binding Mode=OneWay}"
-                                                     IsReadOnly="True"
-                                                     BorderThickness="0"
-                                                     Background="Transparent"
-                                                     Foreground="{StaticResource TextPrimaryBrush}"
-                                                     FontFamily="Consolas" FontSize="11"
-                                                     TextWrapping="Wrap"
-                                                     Padding="4,1"
-                                                     Cursor="IBeam"
-                                                     CaretBrush="Transparent"/>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </ListBox.ItemContainerStyle>
-                    </ListBox>
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             FontFamily="Consolas" FontSize="11"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Disabled"
+                             Padding="8,2,8,8"/>
                 </Grid>
             </Border>
 

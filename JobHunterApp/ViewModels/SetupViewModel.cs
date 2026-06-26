@@ -38,40 +38,35 @@ public partial class SetupViewModel : ObservableObject
         foreach (var l in cfg.Letters) Letters.Add(l);
     }
 
+    // Opens the browser with the app's persistent profile so the user can log in,
+    // configure LinkedIn settings, etc. — all saved automatically for job hunt runs.
+    [RelayCommand]
+    private void OpenBrowser()
+    {
+        var (exe, args) = BrowserExeAndArgs(openUrl: "https://www.linkedin.com/jobs/");
+        if (exe is null)
+        {
+            BrowserStatus = $"{PreferredBrowser} executable not found.";
+            return;
+        }
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = exe, Arguments = args, UseShellExecute = false });
+            BrowserStatus = "Browser opened — log in and configure as needed. Your session is saved automatically.";
+        }
+        catch (Exception ex) { BrowserStatus = $"Failed to open: {ex.Message}"; }
+    }
+
+    // Launches the browser with the CDP debug port for advanced / manual-connect mode.
     [RelayCommand]
     private void LaunchBrowser()
     {
-        var local  = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var progX  = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-        var prog   = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-
-        var candidates = PreferredBrowser switch
-        {
-            PreferredBrowser.Firefox => new[]
-            {
-                System.IO.Path.Combine(prog,  @"Mozilla Firefox\firefox.exe"),
-                System.IO.Path.Combine(progX, @"Mozilla Firefox\firefox.exe"),
-            },
-            PreferredBrowser.Edge => new[]
-            {
-                System.IO.Path.Combine(prog,  @"Microsoft\Edge\Application\msedge.exe"),
-                System.IO.Path.Combine(progX, @"Microsoft\Edge\Application\msedge.exe"),
-            },
-            _ => new[]  // Chrome
-            {
-                System.IO.Path.Combine(local, @"Google\Chrome\Application\chrome.exe"),
-                System.IO.Path.Combine(prog,  @"Google\Chrome\Application\chrome.exe"),
-                System.IO.Path.Combine(progX, @"Google\Chrome\Application\chrome.exe"),
-            }
-        };
-
-        var exe = candidates.FirstOrDefault(System.IO.File.Exists);
+        var (exe, _) = BrowserExeAndArgs(openUrl: null);
         if (exe is null)
         {
             BrowserStatus = $"{PreferredBrowser} not found. Launch it manually with --remote-debugging-port={CdpPort}";
             return;
         }
-
         try
         {
             Process.Start(new ProcessStartInfo
@@ -80,11 +75,49 @@ public partial class SetupViewModel : ObservableObject
                 Arguments       = $"--remote-debugging-port={CdpPort}",
                 UseShellExecute = false
             });
-            BrowserStatus = $"{PreferredBrowser} launched on port {CdpPort} — log in to your sites, then start the job run.";
+            BrowserStatus = $"{PreferredBrowser} launched on port {CdpPort} — log in, then start the job run.";
         }
-        catch (Exception ex)
+        catch (Exception ex) { BrowserStatus = $"Failed to launch: {ex.Message}"; }
+    }
+
+    private (string? exe, string args) BrowserExeAndArgs(string? openUrl)
+    {
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var progX = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+        var prog  = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+
+        if (PreferredBrowser == PreferredBrowser.Firefox)
         {
-            BrowserStatus = $"Failed to launch: {ex.Message}";
+            var exe = new[]
+            {
+                System.IO.Path.Combine(prog,  @"Mozilla Firefox\firefox.exe"),
+                System.IO.Path.Combine(progX, @"Mozilla Firefox\firefox.exe"),
+            }.FirstOrDefault(System.IO.File.Exists);
+            var profileDir = Models.AppPaths.BrowserProfileFirefox;
+            System.IO.Directory.CreateDirectory(profileDir);
+            var args = $"-profile \"{profileDir}\"" + (openUrl is not null ? $" \"{openUrl}\"" : "");
+            return (exe, args);
+        }
+        else
+        {
+            var candidates = PreferredBrowser == PreferredBrowser.Edge
+                ? new[]
+                {
+                    System.IO.Path.Combine(prog,  @"Microsoft\Edge\Application\msedge.exe"),
+                    System.IO.Path.Combine(progX, @"Microsoft\Edge\Application\msedge.exe"),
+                }
+                : new[]
+                {
+                    System.IO.Path.Combine(local, @"Google\Chrome\Application\chrome.exe"),
+                    System.IO.Path.Combine(prog,  @"Google\Chrome\Application\chrome.exe"),
+                    System.IO.Path.Combine(progX, @"Google\Chrome\Application\chrome.exe"),
+                };
+            var exe = candidates.FirstOrDefault(System.IO.File.Exists);
+            var profileDir = Models.AppPaths.BrowserProfileChromium;
+            System.IO.Directory.CreateDirectory(profileDir);
+            var url  = openUrl is not null ? $" \"{openUrl}\"" : "";
+            var args = $"--user-data-dir=\"{profileDir}\"{url}";
+            return (exe, args);
         }
     }
 

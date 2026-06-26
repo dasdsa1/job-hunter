@@ -52,6 +52,28 @@
                                      ToolTip="Opens your installed Microsoft Edge with a dedicated app profile."/>
                     </StackPanel>
 
+                    <!-- Open browser for manual setup -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <Button Content="Open browser with app profile"
+                                Command="{Binding OpenBrowserCommand}"
+                                Style="{StaticResource SecondaryButton}" Padding="14,6"
+                                ToolTip="Opens the browser using the app's saved session so you can log in, set LinkedIn preferences, configure job alerts, etc. Changes are saved automatically."/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding BrowserStatus}"
+                               Foreground="{StaticResource AccentBrush}"
+                               FontSize="11" TextWrapping="Wrap" Margin="0,0,0,12">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding BrowserStatus}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
                     <!-- Advanced: CDP -->
                     <Expander Header="Advanced — connect to an already-running browser"
                               Foreground="{StaticResource TextMutedBrush}" FontSize="11">

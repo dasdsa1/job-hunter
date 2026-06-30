@@ -44,7 +44,10 @@ public static class FileConfigService
             PreferredBrowser = config.PreferredBrowser,
             CdpPort = config.CdpPort,
             Cv = config.Cv,
-            Letters = config.Letters
+            Letters = config.Letters,
+            AdzunaAppId = config.AdzunaAppId,
+            AdzunaAppKey = config.AdzunaAppKey,
+            AdzunaCountry = config.AdzunaCountry
         };
         File.WriteAllText(AppPaths.ConfigFile, JsonSerializer.Serialize(configToSave, Opts));
     }

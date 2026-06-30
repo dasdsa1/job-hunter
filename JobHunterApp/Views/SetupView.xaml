@@ -169,6 +169,45 @@
                 </StackPanel>
             </Border>
 
+            <!-- Adzuna (optional API source) -->
+            <Border Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="ADZUNA API (OPTIONAL)" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                    <TextBlock Text="Free signup at developer.adzuna.com. Leave blank if not using Adzuna."
+                               Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,0,0,12"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="80"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="App ID" Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding AdzunaAppId, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="App Key" Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding AdzunaAppKey, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="Country" Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding AdzunaCountry, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Consolas" ToolTip="2-letter code: us, gb, de, fr, …"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <!-- CV -->
             <Border Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"

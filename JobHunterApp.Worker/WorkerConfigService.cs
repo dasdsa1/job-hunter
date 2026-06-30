@@ -33,6 +33,14 @@ public static class WorkerConfigService
         if (!string.IsNullOrEmpty(apiKey))
             config.ApiKey = apiKey;
 
+        // Adzuna credentials via env (optional)
+        var adzId  = Environment.GetEnvironmentVariable("ADZUNA_APP_ID");
+        var adzKey = Environment.GetEnvironmentVariable("ADZUNA_APP_KEY");
+        var adzCty = Environment.GetEnvironmentVariable("ADZUNA_COUNTRY");
+        if (!string.IsNullOrEmpty(adzId))  config.AdzunaAppId   = adzId;
+        if (!string.IsNullOrEmpty(adzKey)) config.AdzunaAppKey  = adzKey;
+        if (!string.IsNullOrEmpty(adzCty)) config.AdzunaCountry = adzCty;
+
         return config;
     }
 
@@ -51,12 +59,21 @@ public static class WorkerConfigService
             }
         }
 
-        // Env var overrides for quick CLI usage
+        // Env var overrides for quick CLI usage.
+        // SEARCH_SITES: comma-separated, e.g. "remotive,remoteok,arbeitnow,adzuna,linkedin,indeed".
+        // Defaults to the headless API sources so a bare Worker run needs no browser/login.
+        var sitesEnv = Environment.GetEnvironmentVariable("SEARCH_SITES");
+        var sites = string.IsNullOrWhiteSpace(sitesEnv)
+            ? new List<string> { "remotive", "remoteok", "arbeitnow" }
+            : sitesEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                      .Select(s => s.ToLowerInvariant()).ToList();
+
         return new SearchConfig
         {
             JobTitle       = Environment.GetEnvironmentVariable("SEARCH_TITLE")    ?? "",
             Location       = Environment.GetEnvironmentVariable("SEARCH_LOCATION") ?? "Remote",
             Keywords       = Environment.GetEnvironmentVariable("SEARCH_KEYWORDS") ?? "",
+            Sites          = sites,
             MinScore       = int.TryParse(Environment.GetEnvironmentVariable("SEARCH_MIN_SCORE"), out var s) ? s : 6,
             MaxJobsPerSite = int.TryParse(Environment.GetEnvironmentVariable("SEARCH_MAX_JOBS"), out var m) ? m : 20,
             SkipAppliedJobs = true,

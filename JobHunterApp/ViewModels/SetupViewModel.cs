@@ -17,6 +17,9 @@ public partial class SetupViewModel : ObservableObject
     [ObservableProperty] private BrowserMode      _browserMode      = BrowserMode.Managed;
     [ObservableProperty] private PreferredBrowser _preferredBrowser = PreferredBrowser.Chrome;
     [ObservableProperty] private int              _cdpPort          = 9222;
+    [ObservableProperty] private string      _adzunaAppId   = "";
+    [ObservableProperty] private string      _adzunaAppKey  = "";
+    [ObservableProperty] private string      _adzunaCountry = "us";
     [ObservableProperty] private string      _cvPath       = "";
     [ObservableProperty] private string      _cvKey        = "cv";
     [ObservableProperty] private string      _saveStatus   = "";
@@ -33,6 +36,9 @@ public partial class SetupViewModel : ObservableObject
         BrowserMode      = cfg.BrowserMode;
         PreferredBrowser = cfg.PreferredBrowser;
         CdpPort          = cfg.CdpPort;
+        AdzunaAppId   = cfg.AdzunaAppId;
+        AdzunaAppKey  = cfg.AdzunaAppKey;
+        AdzunaCountry = string.IsNullOrWhiteSpace(cfg.AdzunaCountry) ? "us" : cfg.AdzunaCountry;
         CvPath      = cfg.Cv?.Path ?? "";
         CvKey       = cfg.Cv?.Key  ?? "cv";
         foreach (var l in cfg.Letters) Letters.Add(l);
@@ -170,6 +176,9 @@ public partial class SetupViewModel : ObservableObject
             BrowserMode      = BrowserMode,
             PreferredBrowser = PreferredBrowser,
             CdpPort          = CdpPort,
+            AdzunaAppId   = AdzunaAppId.Trim(),
+            AdzunaAppKey  = AdzunaAppKey.Trim(),
+            AdzunaCountry = AdzunaCountry.Trim(),
             Cv          = string.IsNullOrWhiteSpace(CvPath) ? null
                           : new FileEntry { Key = CvKey, Label = System.IO.Path.GetFileName(CvPath), Path = CvPath },
             Letters     = [.. Letters]

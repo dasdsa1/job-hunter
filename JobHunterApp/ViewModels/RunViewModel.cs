@@ -7,6 +7,7 @@ using JobHunterApp.Models;
 using JobHunterApp.Services;
 using JobHunterApp.Services.Applicators;
 using JobHunterApp.Services.Scrapers;
+using JobHunterApp.Services.Sources;
 using Microsoft.Playwright;
 
 namespace JobHunterApp.ViewModels;
@@ -198,36 +199,53 @@ public partial class RunViewModel : ObservableObject
             catch { letterTexts[letter.Key] = ""; }
         }
 
-        // ── 2. Scrape ────────────────────────────────────────────────────────
-        IBrowserContext? browser = null;
-        try
-        {
-            browser = await BrowserService.CreateContextAsync(appConfig, progress);
-        }
-        catch (Exception ex)
-        {
-            AddLog($"❌  Failed to launch browser: {ex.Message}");
-            AddLog("    Make sure Playwright browsers are installed: cd JobHunterApp && playwright install chromium");
-            AddLog("    Or switch to 'Use my browser' mode in Setup and launch Chrome with --remote-debugging-port=9222.");
-            Finish();
-            return;
-        }
-
-        // Stop cleanly if the user closes the browser window at any point
-        var browserClosed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        browser.Close += (_, _) =>
-        {
-            browserClosed.TrySetResult(true);
-            AddLog("\n🛑  Browser was closed — stopping the job hunt.");
-            // Unblock any pending job-selection or interaction so the run exits
-            _applySelectionTcs?.TrySetResult([]);
-            if (PendingInteraction is CvChoiceRequest cv)     cv.Tcs.TrySetResult(false);
-            if (PendingInteraction is LetterChoiceRequest lc) lc.Tcs.TrySetResult([]);
-            if (PendingInteraction is ReviewRequest rev)      rev.Tcs.TrySetResult(false);
-        };
-
         var allJobs = new List<JobListing>();
+
+        // ── 2a. API sources (headless, no browser) ───────────────────────────
+        if (ApiJobSources.AnyEnabled(config, appConfig))
         {
+            try
+            {
+                var apiJobs = await ApiJobSources.FetchAllAsync(config, appConfig, progress, cancellationToken);
+                AddLog($"✔  API sources: {apiJobs.Count} job(s)");
+                allJobs.AddRange(apiJobs);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { AddLog($"API sources error: {ex.Message}"); }
+        }
+
+        // ── 2b. Browser scrapers (only launch a browser if a browser site is on) ─
+        var needBrowser = config.Sites.Contains("linkedin") || config.Sites.Contains("indeed");
+        IBrowserContext? browser = null;
+        var browserClosed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        if (needBrowser)
+        {
+            try
+            {
+                browser = await BrowserService.CreateContextAsync(appConfig, progress);
+            }
+            catch (Exception ex)
+            {
+                AddLog($"❌  Failed to launch browser: {ex.Message}");
+                AddLog("    Make sure Playwright browsers are installed: cd JobHunterApp && playwright install chromium");
+                AddLog("    Or switch to 'Use my browser' mode in Setup and launch Chrome with --remote-debugging-port=9222.");
+                Finish();
+                return;
+            }
+
+            // Stop cleanly if the user closes the browser window at any point
+            browser.Close += (_, _) =>
+            {
+                browserClosed.TrySetResult(true);
+                AddLog("\n🛑  Browser was closed — stopping the job hunt.");
+                // Unblock any pending job-selection or interaction so the run exits
+                _applySelectionTcs?.TrySetResult([]);
+                if (PendingInteraction is CvChoiceRequest cv)     cv.Tcs.TrySetResult(false);
+                if (PendingInteraction is LetterChoiceRequest lc) lc.Tcs.TrySetResult([]);
+                if (PendingInteraction is ReviewRequest rev)      rev.Tcs.TrySetResult(false);
+            };
+
             var scrapeTasks = new List<Task<List<JobListing>>>();
             if (config.Sites.Contains("linkedin"))
                 scrapeTasks.Add(LinkedInScraper.ScrapeAsync(browser, config, progress, cancellationToken));
@@ -249,10 +267,13 @@ public partial class RunViewModel : ObservableObject
             catch (Exception ex) { AddLog($"Scraping error: {ex.Message}"); }
         }
 
+        // Dedup across all sources (API + browser)
+        allJobs = ApiJobSources.Dedup(allJobs);
+
         if (allJobs.Count == 0)
         {
             AddLog("No jobs found. Try broader search terms or different sites.");
-            await browser.CloseAsync();
+            if (browser is not null) await browser.CloseAsync();
             Finish();
             return;
         }
@@ -301,7 +322,7 @@ public partial class RunViewModel : ObservableObject
         {
             AddLog($"No jobs scored ≥ {config.MinScore}.");
             ReportPath = ReporterService.GenerateReport(config, allJobs.Count, 0, []);
-            await browser.CloseAsync();
+            if (browser is not null) await browser.CloseAsync();
             Finish();
             return;
         }
@@ -327,7 +348,7 @@ public partial class RunViewModel : ObservableObject
         {
             AddLog("No jobs selected.");
             ReportPath = ReporterService.GenerateReport(config, allJobs.Count, matches.Count, matches);
-            await browser.CloseAsync();
+            if (browser is not null) await browser.CloseAsync();
             Finish();
             return;
         }
@@ -408,13 +429,25 @@ public partial class RunViewModel : ObservableObject
                 await reviewReq.Tcs.Task;
             };
 
-            if (jm.Job.Source == "linkedin")
+            if (jm.Job.Source == "linkedin" && browser is not null)
                 success = await new LinkedInApplicator(browser).ApplyAsync(jm, selectedLetters, waitReview, progress);
-            else
+            else if (jm.Job.Source == "indeed" && browser is not null)
                 success = await new IndeedApplicator(browser).ApplyAsync(jm, selectedLetters, waitReview, progress);
+            else
+            {
+                // API-source jobs (Remotive, RemoteOK, Arbeitnow, Adzuna) link out to an
+                // external site — open the posting so the user can apply there directly.
+                if (!string.IsNullOrWhiteSpace(jm.Job.Url))
+                {
+                    try { Process.Start(new ProcessStartInfo(jm.Job.Url) { UseShellExecute = true }); }
+                    catch (Exception ex) { AddLog($"Couldn't open {jm.Job.Url}: {ex.Message}"); }
+                }
+                AddLog($"🔗  Opened posting for manual application: {jm.Job.Url}");
+                success = false;
+            }
 
             jm.Applied           = success;
-            jm.ApplicationStatus = success ? "submitted" : "failed";
+            jm.ApplicationStatus = success ? "submitted" : (jm.Job.Source is "linkedin" or "indeed" ? "failed" : "pending");
 
             // Mark as applied for future runs
             if (success)
@@ -428,7 +461,7 @@ public partial class RunViewModel : ObservableObject
         ReportPath = ReporterService.GenerateReport(config, allJobs.Count, matches.Count, matches);
         AddLog($"\n✔  Done! Report saved to {ReportPath}");
 
-        await browser.CloseAsync();
+        if (browser is not null) await browser.CloseAsync();
         Finish();
     }
 

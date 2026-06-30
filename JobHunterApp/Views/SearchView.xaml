@@ -53,11 +53,24 @@
                     <!-- Sites -->
                     <TextBlock Text="Sites" Foreground="{StaticResource TextSecondaryBrush}"
                                FontSize="11" Margin="0,0,0,8"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <CheckBox Content="LinkedIn" IsChecked="{Binding UseLinkedIn}" Margin="0,0,20,0"
-                                  ToolTip="Scrape job listings from LinkedIn Jobs."/>
+                                  ToolTip="Scrape job listings from LinkedIn Jobs (browser + login)."/>
                         <CheckBox Content="Indeed" IsChecked="{Binding UseIndeed}"
-                                  ToolTip="Scrape job listings from Indeed."/>
+                                  ToolTip="Scrape job listings from Indeed (browser + login)."/>
+                    </StackPanel>
+
+                    <TextBlock Text="API sources (headless, no login)" Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="11" Margin="0,0,0,6"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <CheckBox Content="Remotive" IsChecked="{Binding UseRemotive}" Margin="0,0,16,0"
+                                  ToolTip="Free remote-jobs API. No login."/>
+                        <CheckBox Content="RemoteOK" IsChecked="{Binding UseRemoteOk}" Margin="0,0,16,0"
+                                  ToolTip="Free remote/tech jobs API. No login."/>
+                        <CheckBox Content="Arbeitnow" IsChecked="{Binding UseArbeitnow}" Margin="0,0,16,0"
+                                  ToolTip="Free EU + remote jobs API. No login."/>
+                        <CheckBox Content="Adzuna" IsChecked="{Binding UseAdzuna}"
+                                  ToolTip="Broad aggregator. Needs free app id + key in Setup."/>
                     </StackPanel>
 
                     <!-- Quick-apply filters -->

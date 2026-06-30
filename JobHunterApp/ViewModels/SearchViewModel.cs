@@ -35,6 +35,27 @@ public partial class SearchViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ValidationMessage))]
     private bool _useIndeed = true;
 
+    // Headless API sources (no login, no browser). Remotive on by default.
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StartCommand))]
+    [NotifyPropertyChangedFor(nameof(ValidationMessage))]
+    private bool _useRemotive = true;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StartCommand))]
+    [NotifyPropertyChangedFor(nameof(ValidationMessage))]
+    private bool _useRemoteOk;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StartCommand))]
+    [NotifyPropertyChangedFor(nameof(ValidationMessage))]
+    private bool _useArbeitnow;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StartCommand))]
+    [NotifyPropertyChangedFor(nameof(ValidationMessage))]
+    private bool _useAdzuna;
+
     [ObservableProperty] private int  _minScore              = 6;
     [ObservableProperty] private int  _maxJobsPerSite        = 20;
     [ObservableProperty] private bool _linkedInEasyApplyOnly = true;
@@ -111,14 +132,17 @@ public partial class SearchViewModel : ObservableObject
         {
             if (string.IsNullOrWhiteSpace(JobTitle))
                 return "Enter a job title to search for.";
-            if (!UseLinkedIn && !UseIndeed)
-                return "Select at least one site (LinkedIn or Indeed).";
+            if (!AnySite)
+                return "Select at least one source.";
             return "";
         }
     }
 
+    private bool AnySite =>
+        UseLinkedIn || UseIndeed || UseRemotive || UseRemoteOk || UseArbeitnow || UseAdzuna;
+
     private bool CanStart =>
-        !string.IsNullOrWhiteSpace(JobTitle) && (UseLinkedIn || UseIndeed);
+        !string.IsNullOrWhiteSpace(JobTitle) && AnySite;
 
     [RelayCommand]
     private void ClearAppliedHistory()
@@ -133,8 +157,12 @@ public partial class SearchViewModel : ObservableObject
     private void Start()
     {
         var sites = new List<string>();
-        if (UseLinkedIn) sites.Add("linkedin");
-        if (UseIndeed)   sites.Add("indeed");
+        if (UseLinkedIn)  sites.Add("linkedin");
+        if (UseIndeed)    sites.Add("indeed");
+        if (UseRemotive)  sites.Add("remotive");
+        if (UseRemoteOk)  sites.Add("remoteok");
+        if (UseArbeitnow) sites.Add("arbeitnow");
+        if (UseAdzuna)    sites.Add("adzuna");
 
         var jt = JobTitle.Trim();
         var lo = Location.Trim();

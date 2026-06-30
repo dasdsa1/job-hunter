@@ -40,6 +40,13 @@
     <Compile Include="../JobHunterApp/Services/Applicators/IndeedApplicator.cs" Link="Services/Applicators/IndeedApplicator.cs" />
     <Compile Include="../JobHunterApp/Services/Scrapers/LinkedInScraper.cs"     Link="Services/Scrapers/LinkedInScraper.cs" />
     <Compile Include="../JobHunterApp/Services/Scrapers/IndeedScraper.cs"       Link="Services/Scrapers/IndeedScraper.cs" />
+    <Compile Include="../JobHunterApp/Services/Sources/IJobSource.cs"           Link="Services/Sources/IJobSource.cs" />
+    <Compile Include="../JobHunterApp/Services/Sources/SourceHelpers.cs"        Link="Services/Sources/SourceHelpers.cs" />
+    <Compile Include="../JobHunterApp/Services/Sources/RemotiveSource.cs"       Link="Services/Sources/RemotiveSource.cs" />
+    <Compile Include="../JobHunterApp/Services/Sources/RemoteOkSource.cs"       Link="Services/Sources/RemoteOkSource.cs" />
+    <Compile Include="../JobHunterApp/Services/Sources/ArbeitnowSource.cs"      Link="Services/Sources/ArbeitnowSource.cs" />
+    <Compile Include="../JobHunterApp/Services/Sources/AdzunaSource.cs"         Link="Services/Sources/AdzunaSource.cs" />
+    <Compile Include="../JobHunterApp/Services/Sources/ApiJobSources.cs"        Link="Services/Sources/ApiJobSources.cs" />
   </ItemGroup>
 
 </Project>

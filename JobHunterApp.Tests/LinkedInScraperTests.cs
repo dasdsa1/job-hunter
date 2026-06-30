@@ -19,8 +19,10 @@ public class LinkedInScraperTests
 
         var url = InvokeBuildUrl(config);
 
-        Assert.Contains("keywords=Software+Engineer", url);
-        Assert.Contains("location=New+York", url);
+        // Uri.EscapeDataString encodes spaces as %20 (RFC 3986), not '+'. Both are
+        // accepted by LinkedIn; assert the actual encoding the code emits.
+        Assert.Contains("keywords=Software%20Engineer", url);
+        Assert.Contains("location=New%20York", url);
     }
 
     [Fact]

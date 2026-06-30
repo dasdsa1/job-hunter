@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>JobHunterApp.Worker</AssemblyName>
+    <RootNamespace>JobHunterApp</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.47.0" />
+    <PackageReference Include="PdfPig" Version="0.1.14" />
+  </ItemGroup>
+
+  <!-- Source-link shared models (no WPF deps) -->
+  <ItemGroup>
+    <Compile Include="../JobHunterApp/Models/AppConfig.cs"       Link="Models/AppConfig.cs" />
+    <Compile Include="../JobHunterApp/Models/FileEntry.cs"       Link="Models/FileEntry.cs" />
+    <Compile Include="../JobHunterApp/Models/JobListing.cs"      Link="Models/JobListing.cs" />
+    <Compile Include="../JobHunterApp/Models/JobMatch.cs"        Link="Models/JobMatch.cs" />
+    <Compile Include="../JobHunterApp/Models/MatchResult.cs"     Link="Models/MatchResult.cs" />
+    <Compile Include="../JobHunterApp/Models/SearchConfig.cs"    Link="Models/SearchConfig.cs" />
+  </ItemGroup>
+
+  <!-- Source-link shared services (all cross-platform) -->
+  <ItemGroup>
+    <Compile Include="../JobHunterApp/Services/AppliedJobsService.cs"           Link="Services/AppliedJobsService.cs" />
+    <Compile Include="../JobHunterApp/Services/CoverLetterService.cs"           Link="Services/CoverLetterService.cs" />
+    <Compile Include="../JobHunterApp/Services/CvTailorService.cs"              Link="Services/CvTailorService.cs" />
+    <Compile Include="../JobHunterApp/Services/GeminiService.cs"                Link="Services/GeminiService.cs" />
+    <Compile Include="../JobHunterApp/Services/RateLimiter.cs"                  Link="Services/RateLimiter.cs" />
+    <Compile Include="../JobHunterApp/Services/ReporterService.cs"              Link="Services/ReporterService.cs" />
+    <Compile Include="../JobHunterApp/Services/ResumeParserService.cs"          Link="Services/ResumeParserService.cs" />
+    <Compile Include="../JobHunterApp/Services/SearchHistoryService.cs"         Link="Services/SearchHistoryService.cs" />
+    <Compile Include="../JobHunterApp/Services/Applicators/LetterUploader.cs"   Link="Services/Applicators/LetterUploader.cs" />
+    <Compile Include="../JobHunterApp/Services/Applicators/LinkedInApplicator.cs" Link="Services/Applicators/LinkedInApplicator.cs" />
+    <Compile Include="../JobHunterApp/Services/Applicators/IndeedApplicator.cs" Link="Services/Applicators/IndeedApplicator.cs" />
+    <Compile Include="../JobHunterApp/Services/Scrapers/LinkedInScraper.cs"     Link="Services/Scrapers/LinkedInScraper.cs" />
+    <Compile Include="../JobHunterApp/Services/Scrapers/IndeedScraper.cs"       Link="Services/Scrapers/IndeedScraper.cs" />
+  </ItemGroup>
+
+</Project>

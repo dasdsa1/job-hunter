@@ -1,0 +1,11 @@
+{
+  "JobTitle": "Senior Software Engineer",
+  "Location": "Remote",
+  "Keywords": "C# .NET backend",
+  "Sites": ["linkedin", "indeed"],
+  "MinScore": 6,
+  "MaxJobsPerSite": 20,
+  "LinkedInEasyApplyOnly": true,
+  "IndeedApplyOnly": true,
+  "SkipAppliedJobs": true
+}

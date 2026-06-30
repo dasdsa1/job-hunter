@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-and-test:
+    # net9.0-windows requires a Windows runner (WPF target framework)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore JobHunterApp/JobHunterApp.csproj
+
+      - name: Build
+        run: dotnet build JobHunterApp/JobHunterApp.csproj -c Release --no-restore
+
+      - name: Test
+        run: dotnet test JobHunterApp.Tests/JobHunterApp.Tests.csproj -c Release --logger "console;verbosity=normal"
+
+  build-worker:
+    # Worker targets net9.0 (cross-platform) — can use ubuntu runner
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Build worker
+        run: dotnet build JobHunterApp.Worker/JobHunterApp.Worker.csproj -c Release

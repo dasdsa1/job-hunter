@@ -1,5 +1,17 @@
 node_modules/
 dist/
 .env
-data/*.html
-data/*.json
+
+# Build outputs
+**/bin/
+**/obj/
+
+# Data dir: ignore runtime outputs and sensitive files, keep example search config
+data/reports/
+data/applied_jobs.json
+data/browser-profile-chromium/
+data/browser-profile-firefox/
+data/tailored-cvs/
+data/cover-letters/
+data/worker.log
+data/config.json

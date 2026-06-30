@@ -1,32 +1,42 @@
-# Build stage
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS builder
-WORKDIR /build
+# ── Stage 1: build the headless worker ────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
 
-# Copy project files
-COPY JobHunterApp/ ./JobHunterApp/
-COPY JobHunterApp.Tests/ ./JobHunterApp.Tests/
+# Copy only what's needed for restore (layer cache)
+COPY JobHunterApp.Worker/JobHunterApp.Worker.csproj ./JobHunterApp.Worker/
+RUN dotnet restore JobHunterApp.Worker/JobHunterApp.Worker.csproj
 
-# Restore and build
-RUN dotnet restore JobHunterApp/JobHunterApp.csproj
-RUN dotnet build JobHunterApp/JobHunterApp.csproj -c Release
+# Copy shared source referenced via <Compile Include="../...">
+COPY JobHunterApp/Models/   ./JobHunterApp/Models/
+COPY JobHunterApp/Services/ ./JobHunterApp/Services/
+COPY JobHunterApp.Worker/   ./JobHunterApp.Worker/
 
-# Test stage
-FROM builder AS tester
-RUN dotnet test JobHunterApp.Tests/JobHunterApp.Tests.csproj -c Release
+RUN dotnet publish JobHunterApp.Worker/JobHunterApp.Worker.csproj \
+    -c Release -o /app --no-restore
 
-# Runtime stage (headless - no GUI in container)
-FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-windowsservercore-ltsc2022
+# Install Playwright CLI so we can download Chromium into the publish folder
+RUN dotnet tool install --global Microsoft.Playwright.CLI 2>/dev/null || true
+RUN /app/JobHunterApp.Worker --version 2>/dev/null || true
+
+# ── Stage 2: runtime with Playwright Chromium ──────────────────────────────────
+# Official Playwright image ships Chromium + all native deps for the matching version
+FROM mcr.microsoft.com/playwright/dotnet:v1.47.0-noble
 WORKDIR /app
 
-# Copy built app from builder
-COPY --from=builder /build/JobHunterApp/bin/Release/ ./
+# Copy published app
+COPY --from=build /app .
 
-# Set environment
+# Install Playwright browsers inside the image
+RUN pwsh -Command "./JobHunterApp.Worker install chromium" 2>/dev/null \
+ || dotnet JobHunterApp.Worker.dll install chromium 2>/dev/null \
+ || true
+
 ENV JOBHUNTER_HEADLESS=true
-ENV JOBHUNTER_CONFIG_DIR=/app/config
+ENV JOBHUNTER_DATA_DIR=/data
+# Playwright finds its bundled Chromium here (set by the base image)
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Create config directory
-RUN mkdir -p /app/config
+# /data is mounted by docker-compose (config.json, search.json, browser-profile-chromium/, reports/)
+VOLUME ["/data"]
 
-# Entrypoint: just sleep (app is GUI, won't run interactively)
-CMD ["powershell", "-Command", "Write-Host 'Job Hunter App (Headless Mode)'; Write-Host 'Config directory: /app/config'; Start-Sleep -Seconds 3600"]
+ENTRYPOINT ["dotnet", "JobHunterApp.Worker.dll"]

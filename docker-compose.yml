@@ -5,39 +5,26 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: job-hunter-app
+    container_name: job-hunter-worker
 
-    # Volume mounts for persistent config
     volumes:
-      - ./config:/app/config
-      - job-hunter-logs:/app/logs
+      # Mount your local JobHunter data dir so existing config/sessions/history are reused.
+      # Windows path: %LocalAppData%\JobHunter  →  typically C:\Users\<you>\AppData\Local\JobHunter
+      # Adjust the left side to your actual path:
+      - ${JOBHUNTER_LOCAL_DATA:-./data}:/data
 
-    # Environment variables
     environment:
       JOBHUNTER_HEADLESS: "true"
-      JOBHUNTER_CONFIG_DIR: "/app/config"
+      JOBHUNTER_DATA_DIR: "/data"
+      # Set your Gemini API key here (plaintext — DPAPI doesn't work in Linux containers).
+      # Alternatively put it in .env next to this file: GEMINI_API_KEY=AIza...
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      # Search overrides (optional — ignored if /data/search.json exists)
+      SEARCH_TITLE:    "${SEARCH_TITLE:-}"
+      SEARCH_LOCATION: "${SEARCH_LOCATION:-Remote}"
+      SEARCH_KEYWORDS: "${SEARCH_KEYWORDS:-}"
+      SEARCH_MIN_SCORE: "${SEARCH_MIN_SCORE:-6}"
+      SEARCH_MAX_JOBS:  "${SEARCH_MAX_JOBS:-20}"
 
-    # Resource limits (optional)
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-
-    # Restart policy
-    restart: unless-stopped
-
-    # Health check (simple - just check if container is running)
-    healthcheck:
-      test: ["CMD", "powershell", "-Command", "exit 0"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
-volumes:
-  job-hunter-logs:
-    driver: local
+    # Run once and exit (not a long-running service)
+    restart: "no"

@@ -34,6 +34,29 @@ public class AdzunaSource : IJobSource
         return jobs;
     }
 
+    /// <summary>Cheap one-result call to verify app_id/app_key work before a real run.</summary>
+    public static async Task<(bool ok, string message)> TestConnectionAsync(AppConfig appConfig)
+    {
+        try
+        {
+            var country = string.IsNullOrWhiteSpace(appConfig.AdzunaCountry) ? "us" : appConfig.AdzunaCountry.ToLowerInvariant();
+            var url =
+                $"https://api.adzuna.com/v1/api/jobs/{country}/search/1" +
+                $"?app_id={appConfig.AdzunaAppId}&app_key={appConfig.AdzunaAppKey}&results_per_page=1";
+            var json = await SourceHelpers.Http.GetStringAsync(url);
+            var count = JsonNode.Parse(json)?["count"]?.GetValue<long>();
+            return (true, $"Connected — {count:N0} jobs available for country '{country}'");
+        }
+        catch (HttpRequestException ex)
+        {
+            return (false, $"Adzuna rejected the request: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
     public static List<JobListing> Parse(string json, SearchConfig config)
     {
         var jobs = new List<JobListing>();

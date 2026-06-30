@@ -18,6 +18,22 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
     private const int MaxRetries = 4;
     private static readonly int[] BackoffMs = { 2000, 4000, 8000, 16000 };
 
+    /// <summary>Cheap one-off call to verify the API key + model work before a real run.</summary>
+    public async Task<(bool ok, string message)> TestConnectionAsync()
+    {
+        try
+        {
+            var text = await GenerateTextAsync("Reply with exactly: OK");
+            return string.IsNullOrWhiteSpace(text)
+                ? (false, "Connected, but got an empty response. Check the model name.")
+                : (true, $"Connected — model responded ({text.Trim()[..Math.Min(text.Trim().Length, 30)]})");
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
     public async Task<Dictionary<string, MatchResult>> MatchJobsAsync(
         IEnumerable<JobListing> jobs, string resume)
     {

@@ -24,6 +24,12 @@ public partial class SetupViewModel : ObservableObject
     [ObservableProperty] private string      _cvKey        = "cv";
     [ObservableProperty] private string      _saveStatus   = "";
     [ObservableProperty] private string      _browserStatus = "";
+    [ObservableProperty] private string      _geminiTestStatus = "";
+    [ObservableProperty] private bool        _geminiTestOk;
+    [ObservableProperty] private bool        _geminiTesting;
+    [ObservableProperty] private string      _adzunaTestStatus = "";
+    [ObservableProperty] private bool        _adzunaTestOk;
+    [ObservableProperty] private bool        _adzunaTesting;
 
     public ObservableCollection<FileEntry> Letters { get; } = [];
 
@@ -164,6 +170,54 @@ public partial class SetupViewModel : ObservableObject
 
     [RelayCommand]
     private void RemoveLetter(FileEntry letter) => Letters.Remove(letter);
+
+    [RelayCommand]
+    private async Task TestGemini()
+    {
+        if (string.IsNullOrWhiteSpace(ApiKey))
+        {
+            GeminiTestOk = false;
+            GeminiTestStatus = "Enter an API key first.";
+            return;
+        }
+        GeminiTesting = true;
+        GeminiTestStatus = "Testing…";
+        try
+        {
+            var rateLimiter = new RateLimiter(GeminiRpm);
+            var gemini = new GeminiService(ApiKey.Trim(), GeminiModel.Trim(), rateLimiter);
+            var (ok, message) = await gemini.TestConnectionAsync();
+            GeminiTestOk = ok;
+            GeminiTestStatus = message;
+        }
+        finally { GeminiTesting = false; }
+    }
+
+    [RelayCommand]
+    private async Task TestAdzuna()
+    {
+        if (string.IsNullOrWhiteSpace(AdzunaAppId) || string.IsNullOrWhiteSpace(AdzunaAppKey))
+        {
+            AdzunaTestOk = false;
+            AdzunaTestStatus = "Enter App ID and App Key first.";
+            return;
+        }
+        AdzunaTesting = true;
+        AdzunaTestStatus = "Testing…";
+        try
+        {
+            var cfg = new AppConfig
+            {
+                AdzunaAppId   = AdzunaAppId.Trim(),
+                AdzunaAppKey  = AdzunaAppKey.Trim(),
+                AdzunaCountry = AdzunaCountry.Trim()
+            };
+            var (ok, message) = await Services.Sources.AdzunaSource.TestConnectionAsync(cfg);
+            AdzunaTestOk = ok;
+            AdzunaTestStatus = message;
+        }
+        finally { AdzunaTesting = false; }
+    }
 
     [RelayCommand]
     private void Save()

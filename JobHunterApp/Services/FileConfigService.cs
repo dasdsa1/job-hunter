@@ -8,6 +8,7 @@ namespace JobHunterApp.Services;
 public static class FileConfigService
 {
     private static readonly JsonSerializerOptions Opts = new() { WriteIndented = true };
+    private static readonly HashSet<string> RetiredModels = ["gemini-2.0-flash-lite", "gemini-1.5-pro", "gemini-1.5-flash"];
 
     public static AppConfig Load()
     {
@@ -21,6 +22,9 @@ public static class FileConfigService
                     config.ApiKey = Decrypt(config.ApiKey);
                 if (!string.IsNullOrEmpty(config.AdzunaAppKey))
                     config.AdzunaAppKey = Decrypt(config.AdzunaAppKey);
+                // Models Google has retired — silently migrate so old configs don't 404 forever.
+                if (RetiredModels.Contains(config.GeminiModel))
+                    config.GeminiModel = new AppConfig().GeminiModel;
                 return config;
             }
         }

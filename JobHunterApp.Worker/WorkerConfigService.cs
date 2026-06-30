@@ -10,6 +10,7 @@ namespace JobHunterApp.Services;
 public static class WorkerConfigService
 {
     private static readonly JsonSerializerOptions Opts = new() { WriteIndented = true };
+    private static readonly HashSet<string> RetiredModels = ["gemini-2.0-flash-lite", "gemini-1.5-pro", "gemini-1.5-flash"];
 
     public static AppConfig LoadAppConfig()
     {
@@ -32,6 +33,12 @@ public static class WorkerConfigService
         var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
         if (!string.IsNullOrEmpty(apiKey))
             config.ApiKey = apiKey;
+
+        var model = Environment.GetEnvironmentVariable("GEMINI_MODEL");
+        if (!string.IsNullOrEmpty(model))
+            config.GeminiModel = model;
+        else if (RetiredModels.Contains(config.GeminiModel) || string.IsNullOrEmpty(config.GeminiModel))
+            config.GeminiModel = new AppConfig().GeminiModel;
 
         // Adzuna credentials via env (optional)
         var adzId  = Environment.GetEnvironmentVariable("ADZUNA_APP_ID");

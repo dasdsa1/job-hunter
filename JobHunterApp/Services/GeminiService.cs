@@ -31,12 +31,12 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
             .Select(g => g.Select(x => x.job).ToList())
             .ToList();
 
-        AppLogger.Info($”Scoring {jobList.Count} jobs in {batches.Count} batch(es)”);
+        AppLogger.Info($"Scoring {jobList.Count} jobs in {batches.Count} batch(es)");
 
         for (var batchIdx = 0; batchIdx < batches.Count; batchIdx++)
         {
             var batch = batches[batchIdx];
-            AppLogger.Info($”Scoring batch {batchIdx + 1}/{batches.Count} ({batch.Count} jobs)”);
+            AppLogger.Info($"Scoring batch {batchIdx + 1}/{batches.Count} ({batch.Count} jobs)");
 
             var snippets = batch.Select(j => new
             {
@@ -47,7 +47,7 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
                 description = j.Description[..Math.Min(j.Description.Length, 2_500)]
             });
 
-            var prompt = $$”””
+            var prompt = $$"""
                 You are a professional job application assistant.
                 Evaluate each job listing against the candidate's resume and assign a match score.
 
@@ -69,13 +69,13 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
                 Return a JSON array (one object per job):
                 [
                   {
-                    “id”: “<job id>”,
-                    “score”: <1-10 integer>,
-                    “summary”: “<one sentence explaining the score>”,
-                    “reasons”: [“<reason 1>”, “<reason 2>”, “<reason 3>”]
+                    "id": "<job id>",
+                    "score": <1-10 integer>,
+                    "summary": "<one sentence explaining the score>",
+                    "reasons": ["<reason 1>", "<reason 2>", "<reason 3>"]
                   }
                 ]
-                “””;
+                """;
 
             await rateLimiter.ThrottleAsync();
             var raw = await GenerateJsonAsync(prompt);
@@ -87,11 +87,11 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
                 {
                     foreach (var item in arr)
                     {
-                        var id      = item?[“id”]?.GetValue<string>() ?? “”;
-                        var score   = item?[“score”]?.GetValue<int>() ?? 0;
-                        var summary = item?[“summary”]?.GetValue<string>() ?? “”;
-                        var reasons = item?[“reasons”]?.AsArray()
-                            .Select(r => r?.GetValue<string>() ?? “”).ToList() ?? [];
+                        var id      = item?["id"]?.GetValue<string>() ?? "";
+                        var score   = item?["score"]?.GetValue<int>() ?? 0;
+                        var summary = item?["summary"]?.GetValue<string>() ?? "";
+                        var reasons = item?["reasons"]?.AsArray()
+                            .Select(r => r?.GetValue<string>() ?? "").ToList() ?? [];
                         result[id] = new MatchResult
                         {
                             Score   = Math.Clamp(score, 1, 10),
@@ -103,7 +103,7 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
             }
             catch (Exception ex)
             {
-                AppLogger.Exception($”MatchJobsAsync batch parse {batchIdx + 1}”, ex);
+                AppLogger.Exception($"MatchJobsAsync batch parse {batchIdx + 1}", ex);
             }
         }
 
@@ -144,8 +144,8 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
             - Second paragraph: 2-3 concrete skills from my resume that match the requirements
             - Third paragraph: brief closing with availability and enthusiasm
             - Use first person, active voice
-            - Do NOT include placeholders like [Your Name] â€” write it as a finished letter
-            - Do NOT add a subject line, date, or address block â€” just the body paragraphs
+            - Do NOT include placeholders like [Your Name] â€" write it as a finished letter
+            - Do NOT add a subject line, date, or address block â€" just the body paragraphs
             """;
 
         await rateLimiter.ThrottleAsync();
@@ -159,7 +159,7 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
             You are a professional CV writer. Rewrite the candidate's CV to better match the job listing below.
 
             Rules:
-            - Keep all information factually accurate â€” do NOT invent experience or skills
+            - Keep all information factually accurate â€" do NOT invent experience or skills
             - Reorder bullet points and sections to highlight the most relevant experience first
             - Rephrase descriptions to mirror the language used in the job posting
             - Remove or de-emphasise experience unrelated to this role
@@ -184,7 +184,7 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
         return await GenerateTextAsync(prompt);
     }
 
-    // â”€â”€ HTTP helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ HTTP helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
     private async Task<string> GenerateJsonAsync(string prompt)
     {

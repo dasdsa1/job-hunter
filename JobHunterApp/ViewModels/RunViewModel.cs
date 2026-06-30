@@ -54,7 +54,7 @@ public partial class RunViewModel : ObservableObject
     public string LogText => string.Join(Environment.NewLine, Log);
 
     private AppliedJobsStore _appliedJobs = new();
-    private TaskCompletionSource<bool>? _applySelectionTcs;
+    private TaskCompletionSource<List<JobMatch>>? _applySelectionTcs;
     private CancellationTokenSource? _cancellationSource;
 
     public RunViewModel()

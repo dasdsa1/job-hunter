@@ -24,7 +24,7 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
         var jobList = jobs.ToList();
         var result = new Dictionary<string, MatchResult>();
 
-        const int batchSize = 10;
+        const int batchSize = 20;
         var batches = jobList
             .Select((job, index) => (job, index))
             .GroupBy(x => x.index / batchSize)

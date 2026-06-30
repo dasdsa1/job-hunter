@@ -2,7 +2,7 @@
   "JobTitle": "Senior Software Engineer",
   "Location": "Remote",
   "Keywords": "C# .NET backend",
-  "Sites": ["linkedin", "indeed"],
+  "Sites": ["remotive", "remoteok", "arbeitnow"],
   "MinScore": 6,
   "MaxJobsPerSite": 20,
   "LinkedInEasyApplyOnly": true,

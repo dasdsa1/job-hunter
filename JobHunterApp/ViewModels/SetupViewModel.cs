@@ -12,7 +12,7 @@ namespace JobHunterApp.ViewModels;
 public partial class SetupViewModel : ObservableObject
 {
     [ObservableProperty] private string      _apiKey       = "";
-    [ObservableProperty] private string      _geminiModel  = "gemini-2.0-flash-lite";
+    [ObservableProperty] private string      _geminiModel  = "gemini-flash-lite-latest";
     [ObservableProperty] private int         _geminiRpm    = 15;
     [ObservableProperty] private BrowserMode      _browserMode      = BrowserMode.Managed;
     [ObservableProperty] private PreferredBrowser _preferredBrowser = PreferredBrowser.Chrome;

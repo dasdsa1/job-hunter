@@ -95,17 +95,19 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="MATCHED JOBS" FontSize="10" FontWeight="SemiBold"
+                        <TextBlock Grid.Row="0" Text="CONSULTANT'S SHORTLIST" FontSize="10" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextMutedBrush}"
                                    Margin="14,10,0,6"/>
                         <DataGrid Grid.Row="1" ItemsSource="{Binding Jobs}"
-                                  BorderThickness="0" Margin="0,0,0,0">
+                                  BorderThickness="0" Margin="0,0,0,0"
+                                  ToolTipService.ToolTip="{Binding Match.Summary}">
                             <DataGrid.Columns>
                                 <DataGridCheckBoxColumn Header="✓" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="36"/>
-                                <DataGridTextColumn Header="Score"   Binding="{Binding Match.Score, StringFormat={}{0}/10}" Width="56" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Fit"     Binding="{Binding Match.Score, StringFormat={}{0}/10}" Width="48" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="Title"   Binding="{Binding Job.Title}"   Width="*"   IsReadOnly="True"/>
                                 <DataGridTextColumn Header="Company" Binding="{Binding Job.Company}" Width="120" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="Source"  Binding="{Binding Job.Source}"  Width="70"  IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Consultant's Take" Binding="{Binding Match.Summary}" Width="2*" IsReadOnly="True"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>

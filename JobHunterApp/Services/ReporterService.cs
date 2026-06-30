@@ -41,19 +41,22 @@ public static class ReporterService
             var letterCol = showLetter
                 ? "<td><details><summary>View</summary><pre>" + Esc(m.CoverLetter ?? "") + "</pre></details></td>"
                 : "";
+            var redFlags = m.Match.RedFlags.Count > 0
+                ? "<div class=\"redflag\">⚠ " + string.Join("<br>⚠ ", m.Match.RedFlags.Select(Esc)) + "</div>"
+                : "";
             return "<tr>" +
                    "<td><a href=\"" + Esc(m.Job.Url) + "\" target=\"_blank\">" + Esc(m.Job.Title) + "</a></td>" +
                    "<td>" + Esc(m.Job.Company) + "</td>" +
                    "<td>" + Esc(m.Job.Location) + "</td>" +
                    "<td><span class=\"badge\" style=\"background:" + colour + "\">" + m.Match.Score + "/10</span></td>" +
                    "<td>" + Esc(m.Job.Source) + "</td>" +
-                   "<td>" + Esc(m.Match.Summary) + "</td>" +
+                   "<td>" + Esc(m.Match.Summary) + redFlags + "</td>" +
                    letterCol + "</tr>";
         }
 
         var appliedSection = applied.Count > 0
             ? "<h2>Applied Jobs (" + applied.Count + ")</h2>" +
-              "<table><thead><tr><th>Title</th><th>Company</th><th>Location</th><th>Score</th><th>Source</th><th>Summary</th><th>Cover Letter</th></tr></thead>" +
+              "<table><thead><tr><th>Title</th><th>Company</th><th>Location</th><th>Fit</th><th>Source</th><th>Consultant's Take</th><th>Cover Letter</th></tr></thead>" +
               "<tbody>" + string.Join("", applied.Select(m => Row(m, true))) + "</tbody></table>"
             : "";
 
@@ -67,11 +70,12 @@ public static class ReporterService
             ".stat{display:inline-block;background:#f1f5f9;border-radius:.5rem;padding:1rem 1.5rem;margin:.5rem;text-align:center}" +
             ".stat-num{font-size:2rem;font-weight:700;color:#1e40af}" +
             "pre{white-space:pre-wrap;background:#f8fafc;padding:.75rem;border-radius:.25rem;font-size:.8rem;max-width:400px}" +
-            "a{color:#2563eb}details summary{cursor:pointer;color:#2563eb}";
+            "a{color:#2563eb}details summary{cursor:pointer;color:#2563eb}" +
+            ".redflag{color:#b91c1c;font-size:.8rem;margin-top:.35rem}";
 
         return "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\">" +
                "<title>Job Hunt Report</title><style>" + css + "</style></head><body>" +
-               "<h1>Job Hunt Report</h1>" +
+               "<h1>Your Job Hunt Consultation</h1>" +
                "<p style=\"color:#64748b\">" + DateTime.UtcNow.ToString("O") + "</p>" +
                "<div>" +
                "<div class=\"stat\"><div class=\"stat-num\">" + totalScraped + "</div>Jobs scraped</div>" +
@@ -79,8 +83,8 @@ public static class ReporterService
                "<div class=\"stat\"><div class=\"stat-num\">" + applied.Count + "</div>Applied</div>" +
                "</div>" +
                appliedSection +
-               "<h2>All Matched Jobs (" + totalMatched + ")</h2>" +
-               "<table><thead><tr><th>Title</th><th>Company</th><th>Location</th><th>Score</th><th>Source</th><th>Summary</th></tr></thead>" +
+               "<h2>Shortlist (" + totalMatched + ")</h2>" +
+               "<table><thead><tr><th>Title</th><th>Company</th><th>Location</th><th>Fit</th><th>Source</th><th>Consultant's Take</th></tr></thead>" +
                "<tbody>" + string.Join("", matchList.Select(m => Row(m, false))) + "</tbody></table>" +
                "</body></html>";
     }

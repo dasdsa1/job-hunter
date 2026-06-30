@@ -48,8 +48,10 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
             });
 
             var prompt = $$"""
-                You are a professional job application assistant.
-                Evaluate each job listing against the candidate's resume and assign a match score.
+                You are an experienced HR consultant advising a candidate one-on-one. You've
+                read their resume closely and you're now reviewing a batch of job listings for
+                them — the way a good recruiter would, not a keyword matcher. Be direct and
+                specific, like you're talking to them, not filling out a form.
 
                 Scoring guide:
                   9-10: Near-perfect fit - skills, seniority, and domain all align
@@ -66,13 +68,20 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
                 Jobs to evaluate (JSON):
                 {{JsonSerializer.Serialize(snippets)}}
 
+                For each job, write like you're briefing the candidate directly: what you'd tell
+                them to push them toward or away from this role, and what to watch out for (vague
+                comp, generic "rockstar ninja" language, scope creep in the listing, staffing-agency
+                reposts, etc.) if anything looks off. Skip red flags entirely if there are none —
+                don't invent problems.
+
                 Return a JSON array (one object per job):
                 [
                   {
                     "id": "<job id>",
                     "score": <1-10 integer>,
-                    "summary": "<one sentence explaining the score>",
-                    "reasons": ["<reason 1>", "<reason 2>", "<reason 3>"]
+                    "summary": "<one sentence, written to the candidate, e.g. 'I'd push you toward this one — your backend depth covers most of it.'>",
+                    "reasons": ["<concrete reason 1>", "<concrete reason 2>", "<concrete reason 3>"],
+                    "redFlags": ["<optional: only if something genuinely looks off>"]
                   }
                 ]
                 """;
@@ -92,11 +101,14 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
                         var summary = item?["summary"]?.GetValue<string>() ?? "";
                         var reasons = item?["reasons"]?.AsArray()
                             .Select(r => r?.GetValue<string>() ?? "").ToList() ?? [];
+                        var redFlags = item?["redFlags"]?.AsArray()?
+                            .Select(r => r?.GetValue<string>() ?? "").ToList() ?? [];
                         result[id] = new MatchResult
                         {
-                            Score   = Math.Clamp(score, 1, 10),
-                            Summary = summary,
-                            Reasons = reasons
+                            Score    = Math.Clamp(score, 1, 10),
+                            Summary  = summary,
+                            Reasons  = reasons,
+                            RedFlags = redFlags
                         };
                     }
                 }

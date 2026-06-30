@@ -49,13 +49,14 @@ public static class SourceHelpers
 
     /// <summary>
     /// Client-side relevance filter for sources without a server search param.
-    /// Matches when ANY keyword token appears in title/company/description.
+    /// Matches when ANY keyword token appears as a whole word in title/company/description
+    /// (word-boundary match — avoids "go" matching inside "good").
     /// Empty keyword set ⇒ keep everything.
     /// </summary>
     public static bool MatchesKeywords(JobListing job, string[] keywords)
     {
         if (keywords.Length == 0) return true;
         var hay = $"{job.Title} {job.Company} {job.Description}".ToLowerInvariant();
-        return keywords.Any(hay.Contains);
+        return keywords.Any(kw => Regex.IsMatch(hay, $@"\b{Regex.Escape(kw)}\b"));
     }
 }

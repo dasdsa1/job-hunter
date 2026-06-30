@@ -37,22 +37,29 @@ public class ArbeitnowSource : IJobSource
         foreach (var j in arr)
         {
             if (j is null) continue;
-            var title = j["title"]?.GetValue<string>();
-            if (string.IsNullOrWhiteSpace(title)) continue;
-
-            var job = new JobListing
+            try
             {
-                Id          = $"arbeitnow-{j["slug"]?.GetValue<string>() ?? Guid.NewGuid().ToString()}",
-                Title       = title.Trim(),
-                Company     = (j["company_name"]?.GetValue<string>() ?? "").Trim(),
-                Location    = (j["location"]?.GetValue<string>() ?? "").Trim(),
-                Description = SourceHelpers.StripHtml(j["description"]?.GetValue<string>()),
-                Url         = j["url"]?.GetValue<string>() ?? "",
-                Source      = "arbeitnow",
-                PostedDate  = j["created_at"]?.ToString(),
-            };
-            if (SourceHelpers.MatchesKeywords(job, keywords))
-                jobs.Add(job);
+                var title = j["title"]?.GetValue<string>();
+                if (string.IsNullOrWhiteSpace(title)) continue;
+
+                var job = new JobListing
+                {
+                    Id          = $"arbeitnow-{j["slug"]?.GetValue<string>() ?? Guid.NewGuid().ToString()}",
+                    Title       = title.Trim(),
+                    Company     = (j["company_name"]?.GetValue<string>() ?? "").Trim(),
+                    Location    = (j["location"]?.GetValue<string>() ?? "").Trim(),
+                    Description = SourceHelpers.StripHtml(j["description"]?.GetValue<string>()),
+                    Url         = j["url"]?.GetValue<string>() ?? "",
+                    Source      = "arbeitnow",
+                    PostedDate  = j["created_at"]?.ToString(),
+                };
+                if (SourceHelpers.MatchesKeywords(job, keywords))
+                    jobs.Add(job);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Exception("ArbeitnowSource.Parse item", ex);
+            }
         }
         return jobs.Take(config.MaxJobsPerSite).ToList();
     }

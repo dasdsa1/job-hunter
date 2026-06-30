@@ -34,22 +34,29 @@ public class RemotiveSource : IJobSource
         foreach (var j in arr)
         {
             if (j is null) continue;
-            var title   = j["title"]?.GetValue<string>() ?? "";
-            var company = j["company_name"]?.GetValue<string>() ?? "";
-            if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(company)) continue;
-
-            jobs.Add(new JobListing
+            try
             {
-                Id          = $"remotive-{j["id"]?.ToString() ?? Guid.NewGuid().ToString()}",
-                Title       = title.Trim(),
-                Company     = company.Trim(),
-                Location    = (j["candidate_required_location"]?.GetValue<string>() ?? "Remote").Trim(),
-                Description = SourceHelpers.StripHtml(j["description"]?.GetValue<string>()),
-                Url         = j["url"]?.GetValue<string>() ?? "",
-                Source      = "remotive",
-                PostedDate  = j["publication_date"]?.GetValue<string>(),
-                Salary      = j["salary"]?.GetValue<string>(),
-            });
+                var title   = j["title"]?.GetValue<string>() ?? "";
+                var company = j["company_name"]?.GetValue<string>() ?? "";
+                if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(company)) continue;
+
+                jobs.Add(new JobListing
+                {
+                    Id          = $"remotive-{j["id"]?.ToString() ?? Guid.NewGuid().ToString()}",
+                    Title       = title.Trim(),
+                    Company     = company.Trim(),
+                    Location    = (j["candidate_required_location"]?.GetValue<string>() ?? "Remote").Trim(),
+                    Description = SourceHelpers.StripHtml(j["description"]?.GetValue<string>()),
+                    Url         = j["url"]?.GetValue<string>() ?? "",
+                    Source      = "remotive",
+                    PostedDate  = j["publication_date"]?.GetValue<string>(),
+                    Salary      = j["salary"]?.GetValue<string>(),
+                });
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Exception("RemotiveSource.Parse item", ex);
+            }
         }
         return jobs.Take(config.MaxJobsPerSite).ToList();
     }

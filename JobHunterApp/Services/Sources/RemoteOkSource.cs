@@ -37,23 +37,37 @@ public class RemoteOkSource : IJobSource
         foreach (var j in arr)
         {
             if (j is null) continue;
-            // Metadata/legal element has no "position" field.
-            var title = j["position"]?.GetValue<string>();
-            if (string.IsNullOrWhiteSpace(title)) continue;
-
-            var job = new JobListing
+            try
             {
-                Id          = $"remoteok-{j["id"]?.ToString() ?? j["slug"]?.ToString() ?? Guid.NewGuid().ToString()}",
-                Title       = title.Trim(),
-                Company     = (j["company"]?.GetValue<string>() ?? "").Trim(),
-                Location    = (j["location"]?.GetValue<string>() ?? "Remote").Trim(),
-                Description = SourceHelpers.StripHtml(j["description"]?.GetValue<string>()),
-                Url         = j["url"]?.GetValue<string>() ?? "",
-                Source      = "remoteok",
-                PostedDate  = j["date"]?.GetValue<string>(),
-            };
-            if (SourceHelpers.MatchesKeywords(job, keywords))
-                jobs.Add(job);
+                // Metadata/legal element has no "position" field.
+                var title = j["position"]?.GetValue<string>();
+                if (string.IsNullOrWhiteSpace(title)) continue;
+
+                string? salary = null;
+                var min = j["salary_min"]?.AsValue().TryGetValue<double>(out var minVal) == true ? minVal : (double?)null;
+                var max = j["salary_max"]?.AsValue().TryGetValue<double>(out var maxVal) == true ? maxVal : (double?)null;
+                if (min.HasValue || max.HasValue)
+                    salary = $"{min:N0}–{max:N0}";
+
+                var job = new JobListing
+                {
+                    Id          = $"remoteok-{j["id"]?.ToString() ?? j["slug"]?.ToString() ?? Guid.NewGuid().ToString()}",
+                    Title       = title.Trim(),
+                    Company     = (j["company"]?.GetValue<string>() ?? "").Trim(),
+                    Location    = (j["location"]?.GetValue<string>() ?? "Remote").Trim(),
+                    Description = SourceHelpers.StripHtml(j["description"]?.GetValue<string>()),
+                    Url         = j["url"]?.GetValue<string>() ?? "",
+                    Source      = "remoteok",
+                    PostedDate  = j["date"]?.GetValue<string>(),
+                    Salary      = salary,
+                };
+                if (SourceHelpers.MatchesKeywords(job, keywords))
+                    jobs.Add(job);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Exception("RemoteOkSource.Parse item", ex);
+            }
         }
         return jobs.Take(config.MaxJobsPerSite).ToList();
     }

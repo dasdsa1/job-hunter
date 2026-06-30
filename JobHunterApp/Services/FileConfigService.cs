@@ -16,11 +16,11 @@ public static class FileConfigService
             if (File.Exists(AppPaths.ConfigFile))
             {
                 var config = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(AppPaths.ConfigFile)) ?? new();
-                // Decrypt API key if it's encrypted
+                // Decrypt secrets if they're encrypted
                 if (!string.IsNullOrEmpty(config.ApiKey))
-                {
-                    config.ApiKey = DecryptApiKey(config.ApiKey);
-                }
+                    config.ApiKey = Decrypt(config.ApiKey);
+                if (!string.IsNullOrEmpty(config.AdzunaAppKey))
+                    config.AdzunaAppKey = Decrypt(config.AdzunaAppKey);
                 return config;
             }
         }
@@ -34,10 +34,10 @@ public static class FileConfigService
     public static void Save(AppConfig config)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(AppPaths.ConfigFile)!);
-        // Encrypt API key before saving
+        // Encrypt secrets before saving
         var configToSave = new AppConfig
         {
-            ApiKey = string.IsNullOrEmpty(config.ApiKey) ? "" : EncryptApiKey(config.ApiKey),
+            ApiKey = string.IsNullOrEmpty(config.ApiKey) ? "" : Encrypt(config.ApiKey),
             GeminiModel = config.GeminiModel,
             GeminiRpm = config.GeminiRpm,
             BrowserMode = config.BrowserMode,
@@ -46,40 +46,40 @@ public static class FileConfigService
             Cv = config.Cv,
             Letters = config.Letters,
             AdzunaAppId = config.AdzunaAppId,
-            AdzunaAppKey = config.AdzunaAppKey,
+            AdzunaAppKey = string.IsNullOrEmpty(config.AdzunaAppKey) ? "" : Encrypt(config.AdzunaAppKey),
             AdzunaCountry = config.AdzunaCountry
         };
         File.WriteAllText(AppPaths.ConfigFile, JsonSerializer.Serialize(configToSave, Opts));
     }
 
-    private static string EncryptApiKey(string apiKey)
+    private static string Encrypt(string plaintext)
     {
         try
         {
-            var data = Encoding.UTF8.GetBytes(apiKey);
+            var data = Encoding.UTF8.GetBytes(plaintext);
             var encrypted = ProtectedData.Protect(data, null, DataProtectionScope.CurrentUser);
             return Convert.ToBase64String(encrypted);
         }
         catch (Exception ex)
         {
-            AppLogger.Exception("FileConfigService.EncryptApiKey", ex);
-            return apiKey; // Fallback to plaintext if encryption fails
+            AppLogger.Exception("FileConfigService.Encrypt", ex);
+            return plaintext; // Fallback to plaintext if encryption fails
         }
     }
 
-    private static string DecryptApiKey(string encryptedApiKey)
+    private static string Decrypt(string encrypted)
     {
         try
         {
             // Try to decrypt (assumes it's base64-encoded encrypted data)
-            var encrypted = Convert.FromBase64String(encryptedApiKey);
-            var data = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
-            return Encoding.UTF8.GetString(data);
+            var data = Convert.FromBase64String(encrypted);
+            var plaintext = ProtectedData.Unprotect(data, null, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(plaintext);
         }
         catch
         {
             // If decryption fails, assume it's plaintext (legacy or corruption)
-            return encryptedApiKey;
+            return encrypted;
         }
     }
 }

@@ -27,7 +27,7 @@ public class AdzunaSource : IJobSource
             $"https://api.adzuna.com/v1/api/jobs/{country}/search/1" +
             $"?app_id={appConfig.AdzunaAppId}&app_key={appConfig.AdzunaAppKey}" +
             $"&results_per_page={config.MaxJobsPerSite}&what={what}&where={where}&content-type=application/json";
-        log.Report($"Adzuna: fetching (country={country}, what='{config.JobTitle} {config.Keywords}'.trim())");
+        log.Report($"Adzuna: fetching (country={country}, what='{config.JobTitle} {config.Keywords}')");
         var json = await SourceHelpers.Http.GetStringAsync(url, ct);
         var jobs = Parse(json, config);
         log.Report($"Adzuna: {jobs.Count} job(s)");
@@ -43,28 +43,38 @@ public class AdzunaSource : IJobSource
         foreach (var j in arr)
         {
             if (j is null) continue;
-            var title = j["title"]?.GetValue<string>();
-            if (string.IsNullOrWhiteSpace(title)) continue;
-
-            string? salary = null;
-            var min = j["salary_min"]?.GetValue<double>();
-            var max = j["salary_max"]?.GetValue<double>();
-            if (min.HasValue || max.HasValue)
-                salary = $"{min:N0}–{max:N0}";
-
-            jobs.Add(new JobListing
+            try
             {
-                Id          = $"adzuna-{j["id"]?.ToString() ?? Guid.NewGuid().ToString()}",
-                Title       = SourceHelpers.StripHtml(title).Trim(),
-                Company     = (j["company"]?["display_name"]?.GetValue<string>() ?? "").Trim(),
-                Location    = (j["location"]?["display_name"]?.GetValue<string>() ?? "").Trim(),
-                Description = SourceHelpers.StripHtml(j["description"]?.GetValue<string>()),
-                Url         = j["redirect_url"]?.GetValue<string>() ?? "",
-                Source      = "adzuna",
-                PostedDate  = j["created"]?.GetValue<string>(),
-                Salary      = salary,
-            });
+                var title = j["title"]?.GetValue<string>();
+                if (string.IsNullOrWhiteSpace(title)) continue;
+
+                string? salary = null;
+                var min = TryGetDouble(j["salary_min"]);
+                var max = TryGetDouble(j["salary_max"]);
+                if (min.HasValue || max.HasValue)
+                    salary = $"{min:N0}–{max:N0}";
+
+                jobs.Add(new JobListing
+                {
+                    Id          = $"adzuna-{j["id"]?.ToString() ?? Guid.NewGuid().ToString()}",
+                    Title       = SourceHelpers.StripHtml(title).Trim(),
+                    Company     = (j["company"]?["display_name"]?.GetValue<string>() ?? "").Trim(),
+                    Location    = (j["location"]?["display_name"]?.GetValue<string>() ?? "").Trim(),
+                    Description = SourceHelpers.StripHtml(j["description"]?.GetValue<string>()),
+                    Url         = j["redirect_url"]?.GetValue<string>() ?? "",
+                    Source      = "adzuna",
+                    PostedDate  = j["created"]?.GetValue<string>(),
+                    Salary      = salary,
+                });
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Exception("AdzunaSource.Parse item", ex);
+            }
         }
         return jobs.Take(config.MaxJobsPerSite).ToList();
     }
+
+    private static double? TryGetDouble(JsonNode? node) =>
+        node is not null && node.AsValue().TryGetValue<double>(out var d) ? d : null;
 }

@@ -177,12 +177,21 @@ public partial class RunViewModel : ObservableObject
         var gemini      = new GeminiService(appConfig.ApiKey, appConfig.GeminiModel, rateLimiter);
         var progress    = new Progress<string>(AddLog);
 
-        // ── 1. Parse CV ──────────────────────────────────────────────────────
+        // ── 1. Parse CV (cached by path+mtime — survives a crash, skips re-parsing) ──
         string resume;
         try
         {
-            resume = await ResumeParserService.ParseAsync(appConfig.Cv.Path);
-            AddLog($"✔  CV loaded ({resume.Length:N0} chars)");
+            resume = ResumeCacheService.TryGet(appConfig.Cv.Path) ?? "";
+            if (!string.IsNullOrEmpty(resume))
+            {
+                AddLog($"✔  CV loaded from cache ({resume.Length:N0} chars)");
+            }
+            else
+            {
+                resume = await ResumeParserService.ParseAsync(appConfig.Cv.Path);
+                ResumeCacheService.Save(appConfig.Cv.Path, resume);
+                AddLog($"✔  CV loaded ({resume.Length:N0} chars)");
+            }
         }
         catch (Exception ex)
         {
@@ -359,6 +368,8 @@ public partial class RunViewModel : ObservableObject
 
         foreach (var jm in selected)
         {
+          try
+          {
             AddLog($"\n▶  {jm.Job.Title} @ {jm.Job.Company}  [{jm.Match.Score}/10]");
 
             // CV choice
@@ -455,6 +466,16 @@ public partial class RunViewModel : ObservableObject
                 AppliedJobsService.MarkApplied(jm.Job.Id, jm.Job.Title, jm.Job.Company, jm.Job.Source, _appliedJobs);
                 AppliedJobsService.Save(_appliedJobs);
             }
+          }
+          catch (OperationCanceledException) { throw; }
+          catch (Exception ex)
+          {
+              // One job's failure (UI bug, network blip, applicator crash) shouldn't lose
+              // the rest of the already-scored batch — log it and move to the next job.
+              AddLog($"❌  {jm.Job.Title} @ {jm.Job.Company} failed: {ex.Message}");
+              AppLogger.Exception($"RunViewModel apply loop — {jm.Job.Id}", ex);
+              jm.ApplicationStatus = "error";
+          }
         }
 
         // ── 6. Report ────────────────────────────────────────────────────────

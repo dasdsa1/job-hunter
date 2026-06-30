@@ -14,6 +14,7 @@ public static class AppPaths
     public static string BrowserProfileFirefox  => Path.Combine(Root, "browser-profile-firefox");
     public static string TailoredCvsDir         => Path.Combine(Root, "tailored-cvs");
     public static string CoverLettersDir        => Path.Combine(Root, "cover-letters");
+    public static string ResumeCacheFile        => Path.Combine(Root, "resume_cache.json");
 
     public static void EnsureDirectories()
     {

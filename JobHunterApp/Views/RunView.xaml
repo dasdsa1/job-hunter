@@ -142,7 +142,7 @@
                             <StackPanel>
                                 <TextBlock FontWeight="SemiBold" Margin="0,0,0,10">
                                     <Run Text="CV for: "/>
-                                    <Run Text="{Binding PendingInteraction.(vm:CvChoiceRequest.JobTitle), FallbackValue=''}"
+                                    <Run Text="{Binding PendingInteraction.(vm:CvChoiceRequest.JobTitle), Mode=OneWay, FallbackValue=''}"
                                          Foreground="{StaticResource AccentBrush}"/>
                                 </TextBlock>
                                 <StackPanel Orientation="Horizontal">

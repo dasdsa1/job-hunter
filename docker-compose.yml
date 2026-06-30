@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  job-hunter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: job-hunter-app
+
+    # Volume mounts for persistent config
+    volumes:
+      - ./config:/app/config
+      - job-hunter-logs:/app/logs
+
+    # Environment variables
+    environment:
+      JOBHUNTER_HEADLESS: "true"
+      JOBHUNTER_CONFIG_DIR: "/app/config"
+
+    # Resource limits (optional)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check (simple - just check if container is running)
+    healthcheck:
+      test: ["CMD", "powershell", "-Command", "exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  job-hunter-logs:
+    driver: local

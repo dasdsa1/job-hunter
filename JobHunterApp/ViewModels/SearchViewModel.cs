@@ -39,6 +39,7 @@ public partial class SearchViewModel : ObservableObject
     [ObservableProperty] private int  _maxJobsPerSite        = 20;
     [ObservableProperty] private bool _linkedInEasyApplyOnly = true;
     [ObservableProperty] private bool _indeedApplyOnly       = false;
+    [ObservableProperty] private bool _skipAppliedJobs       = true;
 
     public ICollectionView JobTitleSuggestions { get; }
     public ICollectionView LocationSuggestions { get; }
@@ -119,6 +120,15 @@ public partial class SearchViewModel : ObservableObject
     private bool CanStart =>
         !string.IsNullOrWhiteSpace(JobTitle) && (UseLinkedIn || UseIndeed);
 
+    [RelayCommand]
+    private void ClearAppliedHistory()
+    {
+        var store = AppliedJobsService.Load();
+        store.Jobs.Clear();
+        AppliedJobsService.Save(store);
+        AppLogger.Info("SearchViewModel: applied jobs history cleared");
+    }
+
     [RelayCommand(CanExecute = nameof(CanStart))]
     private void Start()
     {
@@ -168,7 +178,8 @@ public partial class SearchViewModel : ObservableObject
             MinScore              = MinScore,
             MaxJobsPerSite        = MaxJobsPerSite,
             LinkedInEasyApplyOnly = LinkedInEasyApplyOnly,
-            IndeedApplyOnly       = IndeedApplyOnly
+            IndeedApplyOnly       = IndeedApplyOnly,
+            SkipAppliedJobs       = SkipAppliedJobs
         });
     }
 

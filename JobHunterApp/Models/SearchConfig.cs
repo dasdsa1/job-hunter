@@ -10,4 +10,5 @@ public class SearchConfig
     public int          MaxJobsPerSite { get; set; } = 20;
     public bool         LinkedInEasyApplyOnly { get; set; } = true;
     public bool         IndeedApplyOnly       { get; set; } = true;
+    public bool         SkipAppliedJobs       { get; set; } = true;
 }

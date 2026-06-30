@@ -8,10 +8,12 @@ public static class AppPaths
 
     public static string ConfigFile             => Path.Combine(Root, "config.json");
     public static string SearchHistory          => Path.Combine(Root, "search_history.json");
+    public static string AppliedJobsFile        => Path.Combine(Root, "applied_jobs.json");
     public static string ReportsDir             => Path.Combine(Root, "reports");
     public static string BrowserProfileChromium => Path.Combine(Root, "browser-profile-chromium");
     public static string BrowserProfileFirefox  => Path.Combine(Root, "browser-profile-firefox");
     public static string TailoredCvsDir         => Path.Combine(Root, "tailored-cvs");
+    public static string CoverLettersDir        => Path.Combine(Root, "cover-letters");
 
     public static void EnsureDirectories()
     {
@@ -19,5 +21,6 @@ public static class AppPaths
         Directory.CreateDirectory(BrowserProfileChromium);
         Directory.CreateDirectory(BrowserProfileFirefox);
         Directory.CreateDirectory(TailoredCvsDir);
+        Directory.CreateDirectory(CoverLettersDir);
     }
 }

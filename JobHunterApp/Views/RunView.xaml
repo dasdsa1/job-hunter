@@ -19,12 +19,19 @@
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
             <TextBlock Text="{Binding StatusText}" FontSize="16" FontWeight="SemiBold"
                        Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-            <Button DockPanel.Dock="Right" Content="Open Report"
-                    Command="{Binding OpenReportCommand}"
-                    Style="{StaticResource SecondaryButton}" Padding="12,6"
-                    Visibility="{Binding ReportPath, Converter={StaticResource BoolVis},
-                                 ConverterParameter=null}"
-                    IsEnabled="{Binding ReportPath, Converter={StaticResource BoolVis}}"/>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,0,0">
+                <Button Content="Stop"
+                        Command="{Binding StopRunCommand}"
+                        Style="{StaticResource DangerButton}" Padding="12,6" Margin="0,0,8,0"
+                        Visibility="{Binding IsRunning, Converter={StaticResource BoolVis}}"
+                        ToolTip="Stop the current job hunt run"/>
+                <Button Content="Open Report"
+                        Command="{Binding OpenReportCommand}"
+                        Style="{StaticResource SecondaryButton}" Padding="12,6"
+                        Visibility="{Binding ReportPath, Converter={StaticResource BoolVis},
+                                     ConverterParameter=null}"
+                        IsEnabled="{Binding ReportPath, Converter={StaticResource BoolVis}}"/>
+            </StackPanel>
         </DockPanel>
 
         <!-- Main area: log left, jobs/interaction right -->

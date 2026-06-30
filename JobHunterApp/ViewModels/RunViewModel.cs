@@ -53,9 +53,14 @@ public partial class RunViewModel : ObservableObject
     // Single string bound to the log TextBox — rebuilt whenever a line is added/cleared.
     public string LogText => string.Join(Environment.NewLine, Log);
 
+    private AppliedJobsStore _appliedJobs = new();
+    private TaskCompletionSource<bool>? _applySelectionTcs;
+    private CancellationTokenSource? _cancellationSource;
+
     public RunViewModel()
     {
         Log.CollectionChanged += (_, _) => OnPropertyChanged(nameof(LogText));
+        _appliedJobs = AppliedJobsService.Load();
     }
 
     // ── Interaction responses ────────────────────────────────────────────────
@@ -105,15 +110,29 @@ public partial class RunViewModel : ObservableObject
             Process.Start(new ProcessStartInfo(ReportPath) { UseShellExecute = true });
     }
 
-    private TaskCompletionSource<List<JobMatch>>? _applySelectionTcs;
+    [RelayCommand]
+    private void StopRun()
+    {
+        if (_cancellationSource is not null && !_cancellationSource.IsCancellationRequested)
+        {
+            _cancellationSource.Cancel();
+            AddLog("Stopping…");
+        }
+    }
 
     // ── Main run method ──────────────────────────────────────────────────────
 
     public async Task RunAsync(SearchConfig config)
     {
+        _cancellationSource = new CancellationTokenSource();
         try
         {
-            await RunCoreAsync(config);
+            await RunCoreAsync(config, _cancellationSource.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            AddLog("❌  Job hunt stopped by user.");
+            Finish();
         }
         catch (Exception ex)
         {
@@ -123,9 +142,14 @@ public partial class RunViewModel : ObservableObject
                 AddLog($"    Inner: {ex.InnerException.Message}");
             Finish();
         }
+        finally
+        {
+            _cancellationSource?.Dispose();
+            _cancellationSource = null;
+        }
     }
 
-    private async Task RunCoreAsync(SearchConfig config)
+    private async Task RunCoreAsync(SearchConfig config, CancellationToken cancellationToken)
     {
         IsRunning   = true;
         CurrentStep = RunStep.Scraping;
@@ -206,14 +230,14 @@ public partial class RunViewModel : ObservableObject
         {
             var scrapeTasks = new List<Task<List<JobListing>>>();
             if (config.Sites.Contains("linkedin"))
-                scrapeTasks.Add(LinkedInScraper.ScrapeAsync(browser, config, progress));
+                scrapeTasks.Add(LinkedInScraper.ScrapeAsync(browser, config, progress, cancellationToken));
             if (config.Sites.Contains("indeed"))
-                scrapeTasks.Add(IndeedScraper.ScrapeAsync(browser, config, progress));
+                scrapeTasks.Add(IndeedScraper.ScrapeAsync(browser, config, progress, cancellationToken));
 
             var scrapeAll = Task.WhenAll(scrapeTasks);
             await Task.WhenAny(scrapeAll, browserClosed.Task);
 
-            if (browserClosed.Task.IsCompleted)
+            if (browserClosed.Task.IsCompleted || cancellationToken.IsCancellationRequested)
             {
                 // Suppress any Playwright exceptions from the abandoned scrape tasks
                 _ = scrapeAll.ContinueWith(_ => { }, TaskContinuationOptions.None);
@@ -236,12 +260,25 @@ public partial class RunViewModel : ObservableObject
         // ── 3. Match ─────────────────────────────────────────────────────────
         CurrentStep = RunStep.Matching;
         StatusText  = "Scoring jobs with AI…";
-        AddLog($"Scoring {allJobs.Count} job(s)…");
+
+        // Filter out already-applied jobs if toggle is on
+        var jobsToScore = allJobs;
+        if (config.SkipAppliedJobs)
+        {
+            var skipped = allJobs.Where(j => AppliedJobsService.IsApplied(j.Id, _appliedJobs)).ToList();
+            jobsToScore = allJobs.Where(j => !AppliedJobsService.IsApplied(j.Id, _appliedJobs)).ToList();
+            if (skipped.Count > 0)
+                AddLog($"⏭  Skipping {skipped.Count} already-applied job(s)");
+        }
+
+        AddLog($"Scoring {jobsToScore.Count} job(s)…");
 
         Dictionary<string, MatchResult> scoreMap;
         try
         {
-            scoreMap = await gemini.MatchJobsAsync(allJobs, resume);
+            scoreMap = jobsToScore.Count > 0
+                ? await gemini.MatchJobsAsync(jobsToScore, resume)
+                : [];
             AddLog($"✔  Scored {scoreMap.Count} job(s)");
         }
         catch (Exception ex)
@@ -250,7 +287,7 @@ public partial class RunViewModel : ObservableObject
             scoreMap = [];
         }
 
-        var matches = allJobs
+        var matches = jobsToScore
             .Select(j => new JobMatch
             {
                 Job   = j,
@@ -342,6 +379,14 @@ public partial class RunViewModel : ObservableObject
                     chunk => Application.Current.Dispatcher.Invoke(
                         () => CoverLetterPreview += chunk));
                 AddLog($"✔  Cover letter ready ({jm.CoverLetter.Split(' ').Length} words)");
+
+                // Save cover letter to disk
+                try
+                {
+                    jm.CoverLetterPath = CoverLetterService.SaveAsDocx(jm.CoverLetter, jm.Job);
+                    AddLog($"Cover letter saved → {jm.CoverLetterPath}");
+                }
+                catch (Exception ex) { AddLog($"Failed to save cover letter: {ex.Message}"); }
             }
             catch (Exception ex) { AddLog($"Cover letter failed: {ex.Message}"); }
 
@@ -370,6 +415,13 @@ public partial class RunViewModel : ObservableObject
 
             jm.Applied           = success;
             jm.ApplicationStatus = success ? "submitted" : "failed";
+
+            // Mark as applied for future runs
+            if (success)
+            {
+                AppliedJobsService.MarkApplied(jm.Job.Id, jm.Job.Title, jm.Job.Company, jm.Job.Source, _appliedJobs);
+                AppliedJobsService.Save(_appliedJobs);
+            }
         }
 
         // ── 6. Report ────────────────────────────────────────────────────────

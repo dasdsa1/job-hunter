@@ -9,76 +9,104 @@ namespace JobHunterApp.Services;
 
 public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
 {
-    private readonly HttpClient _http = new();
+    private static readonly HttpClient _http = new()
+    {
+        Timeout = TimeSpan.FromSeconds(60)
+    };
     private readonly string _baseUrl =
         $"https://generativelanguage.googleapis.com/v1beta/models/{model}";
+    private const int MaxRetries = 4;
+    private static readonly int[] BackoffMs = { 2000, 4000, 8000, 16000 };
 
     public async Task<Dictionary<string, MatchResult>> MatchJobsAsync(
         IEnumerable<JobListing> jobs, string resume)
     {
-        var snippets = jobs.Select(j => new
-        {
-            id          = j.Id,
-            title       = j.Title,
-            company     = j.Company,
-            location    = j.Location,
-            description = j.Description[..Math.Min(j.Description.Length, 1_000)]
-        });
-
-        var prompt = $$"""
-            You are a professional job application assistant.
-            Evaluate each job listing against the candidate's resume and assign a match score.
-
-            Scoring guide:
-              9-10  â€” Near-perfect fit: skills, seniority, and domain all align
-              7-8   â€” Strong match: most requirements met, minor gaps
-              5-6   â€” Moderate: roughly half the requirements match
-              3-4   â€” Weak: significant skill or experience gaps
-              1-2   â€” Poor fit
-
-            Resume:
-            ---
-            {{resume}}
-            ---
-
-            Jobs to evaluate (JSON):
-            {{JsonSerializer.Serialize(snippets)}}
-
-            Return a JSON array â€” one object per job:
-            [
-              {
-                "id": "<job id>",
-                "score": <1-10 integer>,
-                "summary": "<one sentence explaining the score>",
-                "reasons": ["<reason 1>", "<reason 2>", "<reason 3>"]
-              }
-            ]
-            """;
-
-        await rateLimiter.ThrottleAsync();
-        var raw = await GenerateJsonAsync(prompt);
-
+        var jobList = jobs.ToList();
         var result = new Dictionary<string, MatchResult>();
-        try
+
+        const int batchSize = 10;
+        var batches = jobList
+            .Select((job, index) => (job, index))
+            .GroupBy(x => x.index / batchSize)
+            .Select(g => g.Select(x => x.job).ToList())
+            .ToList();
+
+        AppLogger.Info($”Scoring {jobList.Count} jobs in {batches.Count} batch(es)”);
+
+        for (var batchIdx = 0; batchIdx < batches.Count; batchIdx++)
         {
-            var arr = JsonNode.Parse(raw)?.AsArray();
-            if (arr is null) return result;
-            foreach (var item in arr)
+            var batch = batches[batchIdx];
+            AppLogger.Info($”Scoring batch {batchIdx + 1}/{batches.Count} ({batch.Count} jobs)”);
+
+            var snippets = batch.Select(j => new
             {
-                var id      = item?["id"]?.GetValue<string>() ?? "";
-                var score   = item?["score"]?.GetValue<int>() ?? 0;
-                var summary = item?["summary"]?.GetValue<string>() ?? "";
-                var reasons = item?["reasons"]?.AsArray()
-                    .Select(r => r?.GetValue<string>() ?? "").ToList() ?? [];
-                result[id] = new MatchResult
+                id          = j.Id,
+                title       = j.Title,
+                company     = j.Company,
+                location    = j.Location,
+                description = j.Description[..Math.Min(j.Description.Length, 2_500)]
+            });
+
+            var prompt = $$”””
+                You are a professional job application assistant.
+                Evaluate each job listing against the candidate's resume and assign a match score.
+
+                Scoring guide:
+                  9-10: Near-perfect fit - skills, seniority, and domain all align
+                  7-8: Strong match - most requirements met, minor gaps
+                  5-6: Moderate - roughly half the requirements match
+                  3-4: Weak - significant skill or experience gaps
+                  1-2: Poor fit
+
+                Resume:
+                ---
+                {{resume}}
+                ---
+
+                Jobs to evaluate (JSON):
+                {{JsonSerializer.Serialize(snippets)}}
+
+                Return a JSON array (one object per job):
+                [
+                  {
+                    “id”: “<job id>”,
+                    “score”: <1-10 integer>,
+                    “summary”: “<one sentence explaining the score>”,
+                    “reasons”: [“<reason 1>”, “<reason 2>”, “<reason 3>”]
+                  }
+                ]
+                “””;
+
+            await rateLimiter.ThrottleAsync();
+            var raw = await GenerateJsonAsync(prompt);
+
+            try
+            {
+                var arr = JsonNode.Parse(raw)?.AsArray();
+                if (arr is not null)
                 {
-                    Score   = Math.Clamp(score, 1, 10),
-                    Summary = summary,
-                    Reasons = reasons
-                };
+                    foreach (var item in arr)
+                    {
+                        var id      = item?[“id”]?.GetValue<string>() ?? “”;
+                        var score   = item?[“score”]?.GetValue<int>() ?? 0;
+                        var summary = item?[“summary”]?.GetValue<string>() ?? “”;
+                        var reasons = item?[“reasons”]?.AsArray()
+                            .Select(r => r?.GetValue<string>() ?? “”).ToList() ?? [];
+                        result[id] = new MatchResult
+                        {
+                            Score   = Math.Clamp(score, 1, 10),
+                            Summary = summary,
+                            Reasons = reasons
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Exception($”MatchJobsAsync batch parse {batchIdx + 1}”, ex);
             }
         }
-        catch { }
+
         return result;
     }
 
@@ -187,49 +215,116 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
         }
 
         var json = JsonSerializer.Serialize(body);
-        var request = new HttpRequestMessage(HttpMethod.Post,
-            $"{_baseUrl}:streamGenerateContent?alt=sse&key={apiKey}")
+        var url = $"{_baseUrl}:streamGenerateContent?alt=sse&key={apiKey}";
+
+        for (var attempt = 0; attempt < MaxRetries; attempt++)
         {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
-        };
-
-        using var resp = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-        resp.EnsureSuccessStatusCode();
-
-        var sb = new StringBuilder();
-        await using var stream = await resp.Content.ReadAsStreamAsync();
-        using var reader = new StreamReader(stream);
-
-        while (!reader.EndOfStream)
-        {
-            var line = await reader.ReadLineAsync();
-            if (line is null || !line.StartsWith("data: ")) continue;
-            var data = line["data: ".Length..];
-            if (data == "[DONE]") break;
             try
             {
-                var chunk = JsonNode.Parse(data);
-                var text  = chunk?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.GetValue<string>() ?? "";
-                if (!string.IsNullOrEmpty(text))
+                var request = new HttpRequestMessage(HttpMethod.Post, url)
                 {
-                    sb.Append(text);
-                    onChunk(text);
+                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                };
+
+                using var resp = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    if ((int)resp.StatusCode is 429 or 503 && attempt < MaxRetries - 1)
+                    {
+                        var waitMs = BackoffMs[attempt];
+                        if (resp.Headers.RetryAfter?.Delta.HasValue == true)
+                            waitMs = (int)resp.Headers.RetryAfter.Delta.Value.TotalMilliseconds;
+
+                        AppLogger.Info($"Gemini stream rate limited (HTTP {resp.StatusCode}); retry in {waitMs}ms (attempt {attempt + 1}/{MaxRetries})");
+                        await Task.Delay(waitMs);
+                        continue;
+                    }
+                    resp.EnsureSuccessStatusCode();
                 }
+
+                var sb = new StringBuilder();
+                await using var stream = await resp.Content.ReadAsStreamAsync();
+                using var reader = new StreamReader(stream);
+
+                while (!reader.EndOfStream)
+                {
+                    var line = await reader.ReadLineAsync();
+                    if (line is null || !line.StartsWith("data: ")) continue;
+                    var data = line["data: ".Length..];
+                    if (data == "[DONE]") break;
+                    try
+                    {
+                        var chunk = JsonNode.Parse(data);
+                        var text  = chunk?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.GetValue<string>() ?? "";
+                        if (!string.IsNullOrEmpty(text))
+                        {
+                            sb.Append(text);
+                            onChunk(text);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Exception($"Streaming chunk parse (data={data[..Math.Min(data.Length, 100)]})", ex);
+                    }
+                }
+                return sb.ToString().Trim();
             }
-            catch { }
+            catch (HttpRequestException ex) when (attempt < MaxRetries - 1)
+            {
+                AppLogger.Info($"Gemini stream request failed; retry in {BackoffMs[attempt]}ms: {ex.Message}");
+                await Task.Delay(BackoffMs[attempt]);
+                continue;
+            }
         }
-        return sb.ToString().Trim();
+
+        throw new Exception("Gemini streaming request failed after max retries");
     }
 
     private async Task<string> PostAsync(object body, bool stream)
     {
         var endpoint = stream ? "streamGenerateContent" : "generateContent";
         var json     = JsonSerializer.Serialize(body);
-        var response = await _http.PostAsync(
-            $"{_baseUrl}:{endpoint}?key={apiKey}",
-            new StringContent(json, Encoding.UTF8, "application/json"));
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        var url      = $"{_baseUrl}:{endpoint}?key={apiKey}";
+
+        for (var attempt = 0; attempt < MaxRetries; attempt++)
+        {
+            try
+            {
+                var response = await _http.PostAsync(
+                    url,
+                    new StringContent(json, Encoding.UTF8, "application/json"));
+
+                if (response.IsSuccessStatusCode)
+                    return await response.Content.ReadAsStringAsync();
+
+                // Handle rate limit / service unavailable
+                if ((int)response.StatusCode is 429 or 503)
+                {
+                    if (attempt < MaxRetries - 1)
+                    {
+                        var waitMs = BackoffMs[attempt];
+                        if (response.Headers.RetryAfter?.Delta.HasValue == true)
+                            waitMs = (int)response.Headers.RetryAfter.Delta.Value.TotalMilliseconds;
+
+                        AppLogger.Info($"Gemini rate limited (HTTP {response.StatusCode}); retry in {waitMs}ms (attempt {attempt + 1}/{MaxRetries})");
+                        await Task.Delay(waitMs);
+                        continue;
+                    }
+                }
+
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (HttpRequestException ex) when (attempt < MaxRetries - 1)
+            {
+                AppLogger.Info($"Gemini request failed; retry in {BackoffMs[attempt]}ms: {ex.Message}");
+                await Task.Delay(BackoffMs[attempt]);
+                continue;
+            }
+        }
+
+        throw new Exception("Gemini request failed after max retries");
     }
 
     private static string ExtractText(string json)
@@ -239,7 +334,11 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
             var node = JsonNode.Parse(json);
             return node?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.GetValue<string>() ?? "";
         }
-        catch { return ""; }
+        catch (Exception ex)
+        {
+            AppLogger.Exception($"ExtractText failed (json={json[..Math.Min(json.Length, 200)]})", ex);
+            return "";
+        }
     }
 }
 

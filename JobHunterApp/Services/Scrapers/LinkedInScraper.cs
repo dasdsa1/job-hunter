@@ -6,7 +6,7 @@ namespace JobHunterApp.Services.Scrapers;
 public static class LinkedInScraper
 {
     public static async Task<List<JobListing>> ScrapeAsync(
-        IBrowserContext context, SearchConfig config, IProgress<string> log)
+        IBrowserContext context, SearchConfig config, IProgress<string> log, CancellationToken cancellationToken = default)
     {
         var page = await context.NewPageAsync();
         var jobs = new List<JobListing>();
@@ -22,7 +22,7 @@ public static class LinkedInScraper
             // Poll using CSS selectors and URL checks only — LinkedIn's CSP blocks eval(),
             // so WaitForFunctionAsync / EvaluateAsync must not be used here.
             bool loginDetected = false;
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
@@ -50,8 +50,10 @@ public static class LinkedInScraper
                 }
                 catch { /* page is mid-navigation — retry next tick */ }
 
-                await Task.Delay(1_000);
+                await Task.Delay(1_000, cancellationToken);
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             log.Report($"LinkedIn: results container found at {Shorten(page.Url)}");
 
@@ -105,13 +107,13 @@ public static class LinkedInScraper
             var limit = Math.Min(cards.Count, config.MaxJobsPerSite);
             log.Report($"LinkedIn: processing {limit} of {cards.Count} card(s)");
 
-            for (var i = 0; i < limit; i++)
+            for (var i = 0; i < limit && !cancellationToken.IsCancellationRequested; i++)
             {
                 try
                 {
                     log.Report($"LinkedIn: card {i + 1}/{limit}…");
                     await cards[i].ClickAsync();
-                    await Task.Delay(1_500);
+                    await Task.Delay(1_500, cancellationToken);
                     var job = await ExtractJobAsync(page, i.ToString());
                     if (job is null)
                     {
@@ -126,8 +128,13 @@ public static class LinkedInScraper
                     jobs.Add(job);
                     log.Report($"LinkedIn:   ✔  {job.Title} @ {job.Company}");
                 }
-                catch (Exception ex) { log.Report($"LinkedIn:   card {i + 1} error: {ex.Message}"); }
+                catch (Exception ex) when (!(ex is OperationCanceledException))
+                {
+                    log.Report($"LinkedIn:   card {i + 1} error: {ex.Message}");
+                }
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             log.Report($"LinkedIn: done — {jobs.Count} job(s) collected");
         }

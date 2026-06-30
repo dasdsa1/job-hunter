@@ -6,7 +6,7 @@ namespace JobHunterApp.Services.Scrapers;
 public static class IndeedScraper
 {
     public static async Task<List<JobListing>> ScrapeAsync(
-        IBrowserContext context, SearchConfig config, IProgress<string> log)
+        IBrowserContext context, SearchConfig config, IProgress<string> log, CancellationToken cancellationToken = default)
     {
         var page = await context.NewPageAsync();
         var jobs = new List<JobListing>();
@@ -19,7 +19,7 @@ public static class IndeedScraper
 
             // Poll using CSS selectors and URL checks only — no eval() to avoid CSP issues.
             bool loginDetected = false;
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
@@ -46,13 +46,15 @@ public static class IndeedScraper
                 }
                 catch { /* page is mid-navigation — retry next tick */ }
 
-                await Task.Delay(1_000);
+                await Task.Delay(1_000, cancellationToken);
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             var cards = await page.QuerySelectorAllAsync(
                 "[data-jk], .jobsearch-ResultsList li.css-1ac2h1w, .result");
 
-            for (var i = 0; i < Math.Min(cards.Count, config.MaxJobsPerSite); i++)
+            for (var i = 0; i < Math.Min(cards.Count, config.MaxJobsPerSite) && !cancellationToken.IsCancellationRequested; i++)
             {
                 try
                 {
@@ -65,8 +67,13 @@ public static class IndeedScraper
                     jobs.Add(job);
                     log.Report($"Indeed: scraped {jobs.Count} job(s)…");
                 }
-                catch { }
+                catch (Exception ex) when (!(ex is OperationCanceledException))
+                {
+                    // Continue on non-cancellation errors
+                }
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             log.Report($"Indeed: found {jobs.Count} job(s)");
         }

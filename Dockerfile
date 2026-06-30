@@ -12,7 +12,7 @@ COPY JobHunterApp/Services/ ./JobHunterApp/Services/
 COPY JobHunterApp.Worker/   ./JobHunterApp.Worker/
 
 RUN dotnet publish JobHunterApp.Worker/JobHunterApp.Worker.csproj \
-    -c Release -o /app --no-restore
+    -c Release -o /app
 
 # Install Playwright CLI so we can download Chromium into the publish folder
 RUN dotnet tool install --global Microsoft.Playwright.CLI 2>/dev/null || true

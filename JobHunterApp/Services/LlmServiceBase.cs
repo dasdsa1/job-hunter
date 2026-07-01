@@ -89,6 +89,7 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
                 title       = j.Title,
                 company     = j.Company,
                 location    = j.Location,
+                salary      = j.Salary ?? "not listed",
                 description = j.Description[..Math.Min(j.Description.Length, 2_500)]
             });
 
@@ -104,6 +105,10 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
                   5-6: Moderate - roughly half the requirements match
                   3-4: Weak - significant skill or experience gaps
                   1-2: Poor fit
+
+                Each job includes a salary field when the source disclosed one. Factor it into
+                your take when present (e.g. below-market for the seniority/skills involved), and
+                flag it as a red flag if it's missing entirely or vague — don't invent a number.
 
                 Candidate profile:
                 ---

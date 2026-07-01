@@ -120,7 +120,23 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
 
         await rateLimiter.ThrottleAsync();
         var raw = await GenerateJsonAsync(prompt, responseSchema);
-        var node = JsonNode.Parse(raw)?.AsObject();
+
+        JsonObject? node = null;
+        try
+        {
+            node = JsonNode.Parse(raw)?.AsObject();
+        }
+        catch (JsonException ex)
+        {
+            AppLogger.Exception("ExtractCurriculumAsync parse", ex);
+        }
+
+        // Schema-constrained decode + a non-empty basics.name is the only quality signal
+        // available here (no per-field confidence from the model yet) — 0.0 means "parse
+        // failed / nothing extracted" so hub consumers filtering on minConfidence skip it,
+        // rather than 0.0 misrepresenting a successful extraction as zero-quality.
+        var basicsName = node?["basics"]?["name"]?.GetValue<string>();
+        var confidence = !string.IsNullOrWhiteSpace(basicsName) ? 0.7 : 0.0;
 
         return new Curriculum
         {
@@ -133,7 +149,7 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
             Extraction = new ExtractionMetadata
             {
                 Method = "ai",
-                Confidence = 0.0, // no per-field confidence from this prompt yet
+                Confidence = confidence,
                 ExtractedAt = DateTimeOffset.UtcNow
             }
         };

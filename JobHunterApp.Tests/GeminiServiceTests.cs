@@ -176,6 +176,21 @@ public class GeminiServiceTests
         Assert.Single(curriculum.Education!);
         Assert.Single(curriculum.Skills!);
         Assert.Equal("ai", curriculum.Extraction!.Method);
+        Assert.Equal(0.7, curriculum.Extraction.Confidence);
+    }
+
+    /// <summary>Malformed JSON (rate-limit error body, truncated response, etc.) must not throw —
+    /// it should degrade to an empty Curriculum with confidence 0, not crash the caller.</summary>
+    [Fact]
+    public async Task ExtractCurriculumAsync_MalformedJson_ReturnsEmptyCurriculumInsteadOfThrowing()
+    {
+        var gemini = new FixedJsonGeminiService(new RateLimiter(60), "{not valid json");
+
+        var curriculum = await gemini.ExtractCurriculumAsync("Jane Dev resume text");
+
+        Assert.Equal("Jane Dev resume text", curriculum.SourceText);
+        Assert.Equal(0.0, curriculum.Extraction!.Confidence);
+        Assert.Null(curriculum.Work);
     }
 
     /// <summary>Mock service that returns a fixed JSON response without making HTTP calls.</summary>

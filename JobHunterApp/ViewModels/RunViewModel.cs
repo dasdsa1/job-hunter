@@ -37,16 +37,24 @@ public class ReviewRequest(string message) : InteractionRequest
     public TaskCompletionSource<bool> Tcs { get; } = new();
 }
 
+public class VerificationRequest(string jobTitle, List<string> issues) : InteractionRequest
+{
+    public string JobTitle { get; } = jobTitle;
+    public List<string> Issues { get; } = issues;
+    public TaskCompletionSource<bool> Tcs { get; } = new(); // true = proceed, false = skip
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 
 public partial class RunViewModel : ObservableObject
 {
-    [ObservableProperty] private RunStep             _currentStep       = RunStep.Idle;
-    [ObservableProperty] private string              _statusText        = "Ready";
+    [ObservableProperty] private RunStep             _currentStep        = RunStep.Idle;
+    [ObservableProperty] private string              _statusText         = "Ready";
     [ObservableProperty] private bool                _isRunning;
     [ObservableProperty] private InteractionRequest? _pendingInteraction;
     [ObservableProperty] private string              _coverLetterPreview = "";
     [ObservableProperty] private string?             _reportPath;
+    [ObservableProperty] private int                 _scoringProgressPercent;
 
     public ObservableCollection<string>   Log     { get; } = [];
     public ObservableCollection<JobMatch> Jobs    { get; } = [];
@@ -56,16 +64,18 @@ public partial class RunViewModel : ObservableObject
 
     // Computed flags for XAML — DataTrigger Value="{x:Type ...}" compares an instance to a
     // Type object and never matches, so the panel visibility has to be driven by these instead.
-    public bool IsCvChoiceRequest     => PendingInteraction is CvChoiceRequest;
-    public bool IsLetterChoiceRequest => PendingInteraction is LetterChoiceRequest;
-    public bool IsReviewRequest       => PendingInteraction is ReviewRequest;
-    public bool IsSelectingJobs       => CurrentStep == RunStep.SelectingJobs;
+    public bool IsCvChoiceRequest       => PendingInteraction is CvChoiceRequest;
+    public bool IsLetterChoiceRequest   => PendingInteraction is LetterChoiceRequest;
+    public bool IsReviewRequest         => PendingInteraction is ReviewRequest && PendingInteraction is not VerificationRequest;
+    public bool IsVerificationRequest   => PendingInteraction is VerificationRequest;
+    public bool IsSelectingJobs         => CurrentStep == RunStep.SelectingJobs;
 
     partial void OnPendingInteractionChanged(InteractionRequest? value)
     {
         OnPropertyChanged(nameof(IsCvChoiceRequest));
         OnPropertyChanged(nameof(IsLetterChoiceRequest));
         OnPropertyChanged(nameof(IsReviewRequest));
+        OnPropertyChanged(nameof(IsVerificationRequest));
     }
 
     partial void OnCurrentStepChanged(RunStep value) => OnPropertyChanged(nameof(IsSelectingJobs));
@@ -73,9 +83,11 @@ public partial class RunViewModel : ObservableObject
     private AppliedJobsStore _appliedJobs = new();
     private TaskCompletionSource<List<JobMatch>>? _applySelectionTcs;
     private CancellationTokenSource? _cancellationSource;
+    private readonly IDispatcher _dispatcher;
 
-    public RunViewModel()
+    public RunViewModel(IDispatcher? dispatcher = null)
     {
+        _dispatcher = dispatcher ?? new WpfDispatcher();
         Log.CollectionChanged += (_, _) => OnPropertyChanged(nameof(LogText));
         _appliedJobs = AppliedJobsService.Load();
     }
@@ -110,7 +122,19 @@ public partial class RunViewModel : ObservableObject
     [RelayCommand]
     private void SkipApplication()
     {
-        if (PendingInteraction is ReviewRequest r) r.Tcs.TrySetResult(false);
+        if (PendingInteraction is ReviewRequest r && PendingInteraction is not VerificationRequest) r.Tcs.TrySetResult(false);
+    }
+
+    [RelayCommand]
+    private void ConfirmVerificationAndProceed()
+    {
+        if (PendingInteraction is VerificationRequest r) r.Tcs.TrySetResult(true);
+    }
+
+    [RelayCommand]
+    private void SkipVerificationDueToIssues()
+    {
+        if (PendingInteraction is VerificationRequest r) r.Tcs.TrySetResult(false);
     }
 
     [RelayCommand]
@@ -189,8 +213,7 @@ public partial class RunViewModel : ObservableObject
             return;
         }
 
-        var rateLimiter = new RateLimiter(appConfig.GeminiRpm);
-        var gemini      = new GeminiService(appConfig.ApiKey, appConfig.GeminiModel, rateLimiter);
+        var gemini = LlmServiceFactory.Create(appConfig);
         var progress    = new Progress<string>(AddLog);
 
         // ── 1. Parse CV (cached by path+mtime — survives a crash, skips re-parsing) ──
@@ -214,6 +237,15 @@ public partial class RunViewModel : ObservableObject
             AddLog($"❌  Failed to read CV: {ex.Message}");
             Finish();
             return;
+        }
+
+        // Condensed skills/experience summary, cached alongside the raw text — sent to every
+        // scoring batch instead of the full resume, extracted from the LLM only once per CV.
+        var profile = ResumeCacheService.TryGetProfile(appConfig.Cv.Path);
+        if (string.IsNullOrEmpty(profile))
+        {
+            profile = await gemini.ExtractProfileAsync(resume);
+            ResumeCacheService.SaveProfile(appConfig.Cv.Path, resume, profile);
         }
 
         // Pre-parse all letter texts
@@ -322,13 +354,20 @@ public partial class RunViewModel : ObservableObject
         Dictionary<string, MatchResult> scoreMap;
         try
         {
+            var scoringProgress = new Progress<(int current, int total)>(p =>
+            {
+                ScoringProgressPercent = p.total > 0 ? (100 * p.current) / p.total : 0;
+                StatusText = $"Scoring batch {p.current + 1}/{p.total}";
+            });
             scoreMap = jobsToScore.Count > 0
-                ? await gemini.MatchJobsAsync(jobsToScore, resume)
+                ? await gemini.MatchJobsAsync(jobsToScore, profile, scoringProgress)
                 : [];
+            ScoringProgressPercent = 0;
             AddLog($"✔  Scored {scoreMap.Count} job(s)");
         }
         catch (Exception ex)
         {
+            ScoringProgressPercent = 0;
             AddLog($"Matching failed: {ex.Message}");
             scoreMap = [];
         }
@@ -359,7 +398,7 @@ public partial class RunViewModel : ObservableObject
         foreach (var m in matches)
         {
             m.IsSelected = m.Match.Score >= 8;
-            Application.Current.Dispatcher.Invoke(() => Jobs.Add(m));
+            _dispatcher.Invoke(() => Jobs.Add(m));
         }
 
         _applySelectionTcs = new TaskCompletionSource<List<JobMatch>>();
@@ -399,7 +438,28 @@ public partial class RunViewModel : ObservableObject
                 AddLog("Tailoring CV…");
                 try
                 {
-                    activeResume = await gemini.TailorCvAsync(resume, jm.Job, jm.Match);
+                    var (tailoredCv, issues) = await gemini.TailorCvAsync(resume, jm.Job, jm.Match);
+
+                    // P0 #5: Show verification issues to user if any found
+                    if (issues.Count > 0)
+                    {
+                        AddLog($"⚠️  CV verification found {issues.Count} potential issue(s):");
+                        foreach (var issue in issues)
+                            AddLog($"   - {issue}");
+
+                        var verReq = new VerificationRequest(jm.Job.Title, issues);
+                        await ShowInteractionAsync(verReq);
+                        var proceedDespiteIssues = await verReq.Tcs.Task;
+
+                        if (!proceedDespiteIssues)
+                        {
+                            AddLog("Skipped due to CV verification issues.");
+                            continue;
+                        }
+                        AddLog("Proceeding with tailored CV despite issues.");
+                    }
+
+                    activeResume = tailoredCv;
                     var docxPath = CvTailorService.SaveAsDocx(activeResume, jm.Job);
                     AddLog($"Tailored CV saved → {docxPath}");
                 }
@@ -424,7 +484,7 @@ public partial class RunViewModel : ObservableObject
                 var snippets = selectedLetters.Select(l => letterTexts.TryGetValue(l.Key, out var t) ? t : "");
                 jm.CoverLetter = await gemini.GenerateCoverLetterAsync(
                     jm.Job, jm.Match, activeResume, snippets,
-                    chunk => Application.Current.Dispatcher.Invoke(
+                    chunk => _dispatcher.Invoke(
                         () => CoverLetterPreview += chunk));
                 AddLog($"✔  Cover letter ready ({jm.CoverLetter.Split(' ').Length} words)");
 
@@ -506,7 +566,7 @@ public partial class RunViewModel : ObservableObject
 
     private Task ShowInteractionAsync(InteractionRequest request)
     {
-        Application.Current.Dispatcher.Invoke(() => PendingInteraction = request);
+        _dispatcher.Invoke(() => PendingInteraction = request);
         return request switch
         {
             CvChoiceRequest r     => r.Tcs.Task.ContinueWith(_ => ClearInteraction()),
@@ -517,7 +577,7 @@ public partial class RunViewModel : ObservableObject
     }
 
     private void ClearInteraction() =>
-        Application.Current.Dispatcher.Invoke(() => PendingInteraction = null);
+        _dispatcher.Invoke(() => PendingInteraction = null);
 
     private void AddLog(string msg)
     {
@@ -525,7 +585,7 @@ public partial class RunViewModel : ObservableObject
         // DispatcherPriority.Background (4) is BELOW Render (7).
         // This guarantees layout always completes before the next Log.Add fires,
         // preventing VirtualizingStackPanel.MeasureChild from seeing a mid-add state.
-        Application.Current.Dispatcher.BeginInvoke(
+        _dispatcher.Invoke(
             System.Windows.Threading.DispatcherPriority.Background,
             () =>
             {

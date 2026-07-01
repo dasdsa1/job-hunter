@@ -11,7 +11,46 @@
             <TextBlock Text="Setup" FontSize="22" FontWeight="Bold"
                        Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
             <TextBlock Text="Configure your API key, CV file, and recommendation letters."
-                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,28"/>
+                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,20"/>
+
+            <!-- Getting Started Guide -->
+            <Border Background="#E0F2FE" BorderBrush="#0EA5E9" BorderThickness="1"
+                    CornerRadius="8" Padding="16" Margin="0,0,0,20"
+                    Visibility="{Binding IsSetupComplete, Converter={StaticResource BoolNegativeVisConverter}}">
+                <StackPanel>
+                    <TextBlock Text="🚀 Getting Started" FontSize="13" FontWeight="SemiBold"
+                               Foreground="#0369A1" Margin="0,0,0,8"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="11"
+                               Foreground="#0C4A6E" Margin="0,0,0,12">
+                        Complete these 3 essential steps:
+                    </TextBlock>
+                    <TextBlock Text="1. Select your CV/Resume file (required)"
+                               FontSize="11" Foreground="#0C4A6E" Margin="0,0,0,6"/>
+                    <TextBlock Text="2. Add an AI provider key: Gemini, Groq, or OpenRouter (required)"
+                               FontSize="11" Foreground="#0C4A6E" Margin="0,0,0,6"/>
+                    <TextBlock Text="3. Choose your preferred browser for LinkedIn/Indeed login (optional)"
+                               FontSize="11" Foreground="#0C4A6E" Margin="0,0,0,0" Opacity="0.8"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Checklist banner: show what's missing or success -->
+            <Border Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1"
+                    CornerRadius="8" Padding="12" Margin="0,0,0,20">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding MissingSetupItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding StringFormat='• {0}'}"
+                                           Foreground="#78350F" FontSize="12" Margin="0,2"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <!-- When complete, show success -->
+                    <TextBlock Text="✓ Setup complete — you can now search for jobs."
+                               Foreground="#15803D" FontSize="12" FontWeight="SemiBold"
+                               Visibility="{Binding IsSetupComplete, Converter={StaticResource BoolToVisConverter}}"/>
+                </StackPanel>
+            </Border>
 
             <!-- Browser -->
             <Border Background="{StaticResource SurfaceBrush}"
@@ -127,27 +166,40 @@
                 </StackPanel>
             </Border>
 
-            <!-- API Key -->
+            <!-- AI Providers -->
             <Border Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                     CornerRadius="8" Padding="20" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="GEMINI API KEY" FontSize="11" FontWeight="SemiBold"
+                    <TextBlock Text="AI PROVIDERS" FontSize="11" FontWeight="SemiBold"
                                Foreground="{StaticResource TextSecondaryBrush}"
-                               Margin="0,0,0,12"/>
+                               Margin="0,0,0,4"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="11"
+                               Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,16">
+                        Configure a key for any provider you want. "Primary" is tried first — if it
+                        fails or hits its free-tier rate limit, the app automatically falls back to
+                        the next provider below that has a key set.
+                    </TextBlock>
+
+                    <!-- Gemini -->
+                    <TextBlock Text="GEMINI" FontSize="10" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                    <RadioButton Content="Use as primary"
+                                 IsChecked="{Binding Provider,
+                                     Converter={StaticResource EnumBoolConverter},
+                                     ConverterParameter=Gemini}"
+                                 Foreground="{StaticResource TextPrimaryBrush}" FontSize="11"
+                                 Margin="0,0,0,8"/>
                     <TextBox Text="{Binding ApiKey, UpdateSourceTrigger=PropertyChanged}"
                              FontFamily="Consolas" FontSize="12"/>
-                    <TextBlock Text="Get a free key at aistudio.google.com/app/apikey"
+                    <TextBlock Text="Free key at aistudio.google.com/app/apikey"
                                Foreground="{StaticResource TextMutedBrush}"
                                FontSize="11" Margin="0,6,0,0"/>
-
-                    <Grid Margin="0,16,0,0">
+                    <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="16"/>
                             <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="16"/>
-                            <ColumnDefinition Width="80"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="Model" Foreground="{StaticResource TextSecondaryBrush}"
@@ -159,15 +211,8 @@
                                        FontSize="11" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding GeminiRpm, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="4">
-                            <TextBlock Text="Free tier" Foreground="{StaticResource TextSecondaryBrush}"
-                                       FontSize="11" Margin="0,0,0,4"/>
-                            <TextBlock Text="15 RPM" Foreground="{StaticResource TextMutedBrush}"
-                                       FontSize="12" VerticalAlignment="Center" Margin="0,7,0,0"/>
-                        </StackPanel>
                     </Grid>
-
-                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,20">
                         <Button Content="Test Connection"
                                 Command="{Binding TestGeminiCommand}"
                                 Style="{StaticResource SecondaryButton}" Padding="14,6"/>
@@ -178,6 +223,106 @@
                                     <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding GeminiTestOk}" Value="False">
+                                            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Groq -->
+                    <TextBlock Text="GROQ" FontSize="10" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                    <RadioButton Content="Use as primary"
+                                 IsChecked="{Binding Provider,
+                                     Converter={StaticResource EnumBoolConverter},
+                                     ConverterParameter=Groq}"
+                                 Foreground="{StaticResource TextPrimaryBrush}" FontSize="11"
+                                 Margin="0,0,0,8"/>
+                    <TextBox Text="{Binding GroqApiKey, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="Consolas" FontSize="12"/>
+                    <TextBlock Text="Free key at console.groq.com/keys"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               FontSize="11" Margin="0,6,0,0"/>
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="120"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Model" Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding GroqModel, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Requests / min" Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding GroqRpm, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,20">
+                        <Button Content="Test Connection"
+                                Command="{Binding TestGroqCommand}"
+                                Style="{StaticResource SecondaryButton}" Padding="14,6"/>
+                        <TextBlock Text="{Binding GroqTestStatus}" VerticalAlignment="Center"
+                                   FontSize="11" TextWrapping="Wrap" Margin="12,0,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding GroqTestOk}" Value="False">
+                                            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- OpenRouter -->
+                    <TextBlock Text="OPENROUTER" FontSize="10" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                    <RadioButton Content="Use as primary"
+                                 IsChecked="{Binding Provider,
+                                     Converter={StaticResource EnumBoolConverter},
+                                     ConverterParameter=OpenRouter}"
+                                 Foreground="{StaticResource TextPrimaryBrush}" FontSize="11"
+                                 Margin="0,0,0,8"/>
+                    <TextBox Text="{Binding OpenRouterApiKey, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="Consolas" FontSize="12"/>
+                    <TextBlock Text="Free key at openrouter.ai/keys — use a model tagged :free"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               FontSize="11" Margin="0,6,0,0"/>
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="120"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Model" Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding OpenRouterModel, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Requests / min" Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding OpenRouterRpm, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Test Connection"
+                                Command="{Binding TestOpenRouterCommand}"
+                                Style="{StaticResource SecondaryButton}" Padding="14,6"/>
+                        <TextBlock Text="{Binding OpenRouterTestStatus}" VerticalAlignment="Center"
+                                   FontSize="11" TextWrapping="Wrap" Margin="12,0,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding OpenRouterTestOk}" Value="False">
                                             <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
                                         </DataTrigger>
                                     </Style.Triggers>

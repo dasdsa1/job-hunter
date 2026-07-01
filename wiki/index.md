@@ -5,6 +5,7 @@
 | Article | Summary | Updated |
 |---|---|---|
 | [LLM Resume/Job Matching](llm-engineering/llm-resume-job-matching.md) | Categorical vs numeric scoring, requirement decomposition, structured output, resume profile extraction, multi-agent tradeoffs — applied to the Job Hunter scoring pipeline | 2026-07-01 |
+| [WPF Testability, EC2 Deployment, Onboarding UX](llm-engineering/wpf-testability-deployment-onboarding.md) | IDispatcher seam to unblock RunViewModel tests, EC2 Spot for fault-tolerant batch jobs, image tagging over `:latest`, checklist+progress-indicator onboarding pattern | 2026-07-01 |
 
 ## ai-ethics
 

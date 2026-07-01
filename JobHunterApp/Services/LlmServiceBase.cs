@@ -245,6 +245,15 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
             """;
 
         await rateLimiter.ThrottleAsync();
-        return await GenerateTextAsync(prompt);
+        var tailoredCv = await GenerateTextAsync(prompt);
+
+        // P0 #5: Verify tailored CV doesn't hallucinate skills/roles/companies
+        var (valid, issues) = CvVerificationService.VerifyTailoredCv(originalCv, tailoredCv);
+        if (!valid)
+        {
+            AppLogger.Warn($"CV tailoring verification found issues for {job.Company}/{job.Title}: {string.Join("; ", issues)}");
+        }
+
+        return tailoredCv;
     }
 }

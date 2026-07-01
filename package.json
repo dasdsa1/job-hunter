@@ -20,7 +20,7 @@
     "open": "^11.0.0",
     "ora": "^8.1.1",
     "pdf-parse": "^2.4.5",
-    "playwright": "^1.47.0"
+    "playwright": "^1.61.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

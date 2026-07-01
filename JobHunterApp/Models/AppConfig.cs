@@ -38,4 +38,9 @@ public class AppConfig
     // Optional: POSTs a JSON summary here when a headless run finishes (Slack incoming
     // webhook, Discord webhook, or any endpoint that accepts a JSON body both understand).
     public string NotificationWebhookUrl { get; set; } = "";
+
+    // Optional: marketplace-hub CBIF sync (platform-schemas). Empty HubBaseUrl disables it —
+    // job-hunter works standalone with no hub configured.
+    public string HubBaseUrl { get; set; } = "";
+    public string HubToken   { get; set; } = "";
 }

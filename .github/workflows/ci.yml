@@ -43,3 +43,13 @@ jobs:
 
       - name: Test worker
         run: dotnet test JobHunterApp.Worker.Tests/JobHunterApp.Worker.Tests.csproj -c Release --logger "console;verbosity=normal"
+
+  build-docker:
+    # Verifies the container actually builds — caught 3 local-only breaks that CI missed.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t job-hunter-worker:ci .

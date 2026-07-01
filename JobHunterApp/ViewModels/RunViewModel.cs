@@ -189,8 +189,7 @@ public partial class RunViewModel : ObservableObject
             return;
         }
 
-        var rateLimiter = new RateLimiter(appConfig.GeminiRpm);
-        var gemini      = LlmServiceFactory.Create(appConfig, rateLimiter);
+        var gemini = LlmServiceFactory.Create(appConfig);
         var progress    = new Progress<string>(AddLog);
 
         // ── 1. Parse CV (cached by path+mtime — survives a crash, skips re-parsing) ──

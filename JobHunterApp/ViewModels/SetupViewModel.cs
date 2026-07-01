@@ -12,9 +12,28 @@ namespace JobHunterApp.ViewModels;
 public partial class SetupViewModel : ObservableObject
 {
     [ObservableProperty] private LlmProvider _provider     = LlmProvider.Gemini;
+
     [ObservableProperty] private string      _apiKey       = "";
     [ObservableProperty] private string      _geminiModel  = "gemini-flash-lite-latest";
     [ObservableProperty] private int         _geminiRpm    = 15;
+    [ObservableProperty] private string      _geminiTestStatus = "";
+    [ObservableProperty] private bool        _geminiTestOk;
+    [ObservableProperty] private bool        _geminiTesting;
+
+    [ObservableProperty] private string      _groqApiKey   = "";
+    [ObservableProperty] private string      _groqModel    = "llama-3.3-70b-versatile";
+    [ObservableProperty] private int         _groqRpm      = 30;
+    [ObservableProperty] private string      _groqTestStatus = "";
+    [ObservableProperty] private bool        _groqTestOk;
+    [ObservableProperty] private bool        _groqTesting;
+
+    [ObservableProperty] private string      _openRouterApiKey = "";
+    [ObservableProperty] private string      _openRouterModel  = "meta-llama/llama-3.3-70b-instruct:free";
+    [ObservableProperty] private int         _openRouterRpm    = 20;
+    [ObservableProperty] private string      _openRouterTestStatus = "";
+    [ObservableProperty] private bool        _openRouterTestOk;
+    [ObservableProperty] private bool        _openRouterTesting;
+
     [ObservableProperty] private BrowserMode      _browserMode      = BrowserMode.Managed;
     [ObservableProperty] private PreferredBrowser _preferredBrowser = PreferredBrowser.Chrome;
     [ObservableProperty] private int              _cdpPort          = 9222;
@@ -25,20 +44,11 @@ public partial class SetupViewModel : ObservableObject
     [ObservableProperty] private string      _cvKey        = "cv";
     [ObservableProperty] private string      _saveStatus   = "";
     [ObservableProperty] private string      _browserStatus = "";
-    [ObservableProperty] private string      _geminiTestStatus = "";
-    [ObservableProperty] private bool        _geminiTestOk;
-    [ObservableProperty] private bool        _geminiTesting;
     [ObservableProperty] private string      _adzunaTestStatus = "";
     [ObservableProperty] private bool        _adzunaTestOk;
     [ObservableProperty] private bool        _adzunaTesting;
 
     public ObservableCollection<FileEntry> Letters { get; } = [];
-
-    partial void OnProviderChanged(LlmProvider value)
-    {
-        GeminiModel = Services.LlmServiceFactory.DefaultModel(value);
-        GeminiRpm   = value == LlmProvider.Gemini ? 15 : 30;
-    }
 
     public SetupViewModel()
     {
@@ -47,6 +57,12 @@ public partial class SetupViewModel : ObservableObject
         ApiKey      = cfg.ApiKey;
         GeminiModel = cfg.GeminiModel;
         GeminiRpm   = cfg.GeminiRpm;
+        GroqApiKey  = cfg.GroqApiKey;
+        GroqModel   = cfg.GroqModel;
+        GroqRpm     = cfg.GroqRpm;
+        OpenRouterApiKey = cfg.OpenRouterApiKey;
+        OpenRouterModel  = cfg.OpenRouterModel;
+        OpenRouterRpm    = cfg.OpenRouterRpm;
         BrowserMode      = cfg.BrowserMode;
         PreferredBrowser = cfg.PreferredBrowser;
         CdpPort          = cfg.CdpPort;
@@ -179,27 +195,59 @@ public partial class SetupViewModel : ObservableObject
     [RelayCommand]
     private void RemoveLetter(FileEntry letter) => Letters.Remove(letter);
 
+    private AppConfig BuildProviderTestConfig() => new()
+    {
+        ApiKey           = ApiKey.Trim(),
+        GeminiModel      = GeminiModel.Trim(),
+        GeminiRpm        = GeminiRpm,
+        GroqApiKey       = GroqApiKey.Trim(),
+        GroqModel        = GroqModel.Trim(),
+        GroqRpm          = GroqRpm,
+        OpenRouterApiKey = OpenRouterApiKey.Trim(),
+        OpenRouterModel  = OpenRouterModel.Trim(),
+        OpenRouterRpm    = OpenRouterRpm
+    };
+
     [RelayCommand]
     private async Task TestGemini()
     {
-        if (string.IsNullOrWhiteSpace(ApiKey))
-        {
-            GeminiTestOk = false;
-            GeminiTestStatus = "Enter an API key first.";
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(ApiKey)) { GeminiTestOk = false; GeminiTestStatus = "Enter an API key first."; return; }
         GeminiTesting = true;
         GeminiTestStatus = "Testing…";
         try
         {
-            var rateLimiter = new RateLimiter(GeminiRpm);
-            var testCfg = new AppConfig { Provider = Provider, ApiKey = ApiKey.Trim(), GeminiModel = GeminiModel.Trim() };
-            var llm = LlmServiceFactory.Create(testCfg, rateLimiter);
-            var (ok, message) = await llm.TestConnectionAsync();
-            GeminiTestOk = ok;
-            GeminiTestStatus = message;
+            var llm = LlmServiceFactory.CreateSingle(BuildProviderTestConfig(), LlmProvider.Gemini);
+            (GeminiTestOk, GeminiTestStatus) = await llm.TestConnectionAsync();
         }
         finally { GeminiTesting = false; }
+    }
+
+    [RelayCommand]
+    private async Task TestGroq()
+    {
+        if (string.IsNullOrWhiteSpace(GroqApiKey)) { GroqTestOk = false; GroqTestStatus = "Enter an API key first."; return; }
+        GroqTesting = true;
+        GroqTestStatus = "Testing…";
+        try
+        {
+            var llm = LlmServiceFactory.CreateSingle(BuildProviderTestConfig(), LlmProvider.Groq);
+            (GroqTestOk, GroqTestStatus) = await llm.TestConnectionAsync();
+        }
+        finally { GroqTesting = false; }
+    }
+
+    [RelayCommand]
+    private async Task TestOpenRouter()
+    {
+        if (string.IsNullOrWhiteSpace(OpenRouterApiKey)) { OpenRouterTestOk = false; OpenRouterTestStatus = "Enter an API key first."; return; }
+        OpenRouterTesting = true;
+        OpenRouterTestStatus = "Testing…";
+        try
+        {
+            var llm = LlmServiceFactory.CreateSingle(BuildProviderTestConfig(), LlmProvider.OpenRouter);
+            (OpenRouterTestOk, OpenRouterTestStatus) = await llm.TestConnectionAsync();
+        }
+        finally { OpenRouterTesting = false; }
     }
 
     [RelayCommand]
@@ -237,6 +285,12 @@ public partial class SetupViewModel : ObservableObject
             ApiKey      = ApiKey.Trim(),
             GeminiModel = GeminiModel.Trim(),
             GeminiRpm   = GeminiRpm,
+            GroqApiKey       = GroqApiKey.Trim(),
+            GroqModel        = GroqModel.Trim(),
+            GroqRpm          = GroqRpm,
+            OpenRouterApiKey = OpenRouterApiKey.Trim(),
+            OpenRouterModel  = OpenRouterModel.Trim(),
+            OpenRouterRpm    = OpenRouterRpm,
             BrowserMode      = BrowserMode,
             PreferredBrowser = PreferredBrowser,
             CdpPort          = CdpPort,

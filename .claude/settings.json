@@ -1,0 +1,59 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit -m *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(git branch *)",
+      "Bash(git stash *)",
+      "Bash(git merge *)",
+      "Bash(git rebase *)",
+      "Bash(git restore *)",
+      "Bash(git reset *)",
+      "Bash(git rm *)",
+      "Bash(dotnet build *)",
+      "Bash(dotnet test *)",
+      "Bash(dotnet restore *)",
+      "Bash(dotnet clean *)",
+      "Bash(dotnet format *)",
+      "Bash(dotnet ef *)",
+      "Bash(dotnet run *)",
+      "Bash(dotnet add *)",
+      "Bash(dotnet --version)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(npm start *)",
+      "Bash(npx ng *)",
+      "Bash(npx tsc *)",
+      "Bash(docker compose *)",
+      "Bash(docker-compose *)",
+      "Bash(docker build *)",
+      "Bash(docker --version)",
+      "Bash(gh repo *)",
+      "Bash(gh pr *)",
+      "Bash(gh run *)",
+      "Bash(gh api *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/format-on-edit.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

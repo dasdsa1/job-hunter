@@ -20,6 +20,9 @@
 - AI: pluggable provider abstraction, bring-your-own-key. This repo already does this via `LlmServiceFactory`/`FallbackLlmService` — keep new AI code behind that abstraction, never hardcode a single provider.
 
 ## Git workflow (strict)
+- Use relative paths, never absolute, in code, scripts, configs, docs, and commands —
+  repos and the `platform/` parent get moved/renamed; relative paths survive that,
+  absolute ones don't.
 - Self code-review BEFORE every commit — re-read your own diff for bugs, leftover debug code, and scope creep before committing.
 - Break commits into logical chunks. No giant commits mixing unrelated concerns.
 - Conventional Commits format (`feat:`, `fix:`, `test:`, `chore:`, `ci:`, `docs:`, `refactor:`).

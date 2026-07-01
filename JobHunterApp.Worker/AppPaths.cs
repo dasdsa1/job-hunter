@@ -16,6 +16,7 @@ public static class AppPaths
     public static string SearchConfigFile       => Path.Combine(Root, "search.json");
     public static string SearchHistory          => Path.Combine(Root, "search_history.json");
     public static string AppliedJobsFile        => Path.Combine(Root, "applied_jobs.json");
+    public static string ResumeCacheFile        => Path.Combine(Root, "resume_cache.json");
     public static string ReportsDir             => Path.Combine(Root, "reports");
     public static string BrowserProfileChromium => Path.Combine(Root, "browser-profile-chromium");
     public static string BrowserProfileFirefox  => Path.Combine(Root, "browser-profile-firefox");

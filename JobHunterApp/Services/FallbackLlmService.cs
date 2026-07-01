@@ -13,6 +13,9 @@ public class FallbackLlmService(IReadOnlyList<(LlmProvider provider, ILlmService
         IEnumerable<JobListing> jobs, string resume) =>
         await RunAsync(s => s.MatchJobsAsync(jobs, resume));
 
+    public async Task<string> ExtractProfileAsync(string resume) =>
+        await RunAsync(s => s.ExtractProfileAsync(resume));
+
     public async Task<string> GenerateCoverLetterAsync(
         JobListing job, MatchResult match, string resume,
         IEnumerable<string> letterSnippets, Action<string>? onChunk = null) =>

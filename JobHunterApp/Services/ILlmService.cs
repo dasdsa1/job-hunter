@@ -9,6 +9,10 @@ public interface ILlmService
     Task<Dictionary<string, MatchResult>> MatchJobsAsync(
         IEnumerable<JobListing> jobs, string resume);
 
+    /// <summary>Condenses a resume into a short skills/experience summary, once, so callers can
+    /// reuse it across many scoring batches instead of resending the full resume text each time.</summary>
+    Task<string> ExtractProfileAsync(string resume);
+
     Task<string> GenerateCoverLetterAsync(
         JobListing job, MatchResult match, string resume,
         IEnumerable<string> letterSnippets,

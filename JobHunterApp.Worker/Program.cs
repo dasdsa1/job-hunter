@@ -115,7 +115,15 @@ if (searchConfig.SkipAppliedJobs)
 var resume = "";
 if (!string.IsNullOrEmpty(appConfig.Cv?.Path) && File.Exists(appConfig.Cv.Path))
 {
-    try { resume = await ResumeParserService.ParseAsync(appConfig.Cv.Path); }
+    try
+    {
+        resume = ResumeCacheService.TryGet(appConfig.Cv.Path) ?? "";
+        if (string.IsNullOrEmpty(resume))
+        {
+            resume = await ResumeParserService.ParseAsync(appConfig.Cv.Path);
+            ResumeCacheService.Save(appConfig.Cv.Path, resume);
+        }
+    }
     catch (Exception ex) { AppLogger.Exception("ParseResume", ex); }
 }
 if (string.IsNullOrEmpty(resume))
@@ -123,7 +131,17 @@ if (string.IsNullOrEmpty(resume))
 
 AppLogger.Info("Scoring jobs with Gemini…");
 var gemini = LlmServiceFactory.Create(appConfig);
-var scores  = await gemini.MatchJobsAsync(allJobs, resume);
+
+// Condensed skills/experience summary — sent to every scoring batch instead of the
+// full resume, extracted from the LLM only once per CV (cached).
+var profile = ResumeCacheService.TryGetProfile(appConfig.Cv.Path);
+if (string.IsNullOrEmpty(profile) && !string.IsNullOrEmpty(resume))
+{
+    profile = await gemini.ExtractProfileAsync(resume);
+    ResumeCacheService.SaveProfile(appConfig.Cv.Path, resume, profile);
+}
+
+var scores  = await gemini.MatchJobsAsync(allJobs, profile ?? "");
 
 var matches = allJobs
     .Where(j => scores.TryGetValue(j.Id, out var r) && r.Score >= searchConfig.MinScore)

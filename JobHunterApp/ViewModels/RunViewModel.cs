@@ -215,6 +215,15 @@ public partial class RunViewModel : ObservableObject
             return;
         }
 
+        // Condensed skills/experience summary, cached alongside the raw text — sent to every
+        // scoring batch instead of the full resume, extracted from the LLM only once per CV.
+        var profile = ResumeCacheService.TryGetProfile(appConfig.Cv.Path);
+        if (string.IsNullOrEmpty(profile))
+        {
+            profile = await gemini.ExtractProfileAsync(resume);
+            ResumeCacheService.SaveProfile(appConfig.Cv.Path, resume, profile);
+        }
+
         // Pre-parse all letter texts
         var letterTexts = new Dictionary<string, string>();
         foreach (var letter in appConfig.Letters)
@@ -322,7 +331,7 @@ public partial class RunViewModel : ObservableObject
         try
         {
             scoreMap = jobsToScore.Count > 0
-                ? await gemini.MatchJobsAsync(jobsToScore, resume)
+                ? await gemini.MatchJobsAsync(jobsToScore, profile)
                 : [];
             AddLog($"✔  Scored {scoreMap.Count} job(s)");
         }

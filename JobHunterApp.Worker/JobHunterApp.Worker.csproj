@@ -38,6 +38,7 @@
     <Compile Include="../JobHunterApp/Services/OpenAiCompatibleService.cs"      Link="Services/OpenAiCompatibleService.cs" />
     <Compile Include="../JobHunterApp/Services/RateLimiter.cs"                  Link="Services/RateLimiter.cs" />
     <Compile Include="../JobHunterApp/Services/ReporterService.cs"              Link="Services/ReporterService.cs" />
+    <Compile Include="../JobHunterApp/Services/ResumeCacheService.cs"           Link="Services/ResumeCacheService.cs" />
     <Compile Include="../JobHunterApp/Services/ResumeParserService.cs"          Link="Services/ResumeParserService.cs" />
     <Compile Include="../JobHunterApp/Services/SearchHistoryService.cs"         Link="Services/SearchHistoryService.cs" />
     <Compile Include="../JobHunterApp/Services/Applicators/LetterUploader.cs"   Link="Services/Applicators/LetterUploader.cs" />

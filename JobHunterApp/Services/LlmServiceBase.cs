@@ -27,8 +27,26 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
         }
     }
 
+    public async Task<string> ExtractProfileAsync(string resume)
+    {
+        var prompt = $"""
+            Condense the resume below into a compact candidate profile for a recruiter to
+            skim before scoring job matches. Cover: seniority level, core skills/technologies,
+            years of experience, domain(s) worked in, and notable roles. Plain text, no
+            markdown, under 200 words.
+
+            Resume:
+            ---
+            {resume}
+            ---
+            """;
+
+        await rateLimiter.ThrottleAsync();
+        return await GenerateTextAsync(prompt);
+    }
+
     public async Task<Dictionary<string, MatchResult>> MatchJobsAsync(
-        IEnumerable<JobListing> jobs, string resume)
+        IEnumerable<JobListing> jobs, string profile)
     {
         var jobList = jobs.ToList();
         var result = new Dictionary<string, MatchResult>();
@@ -87,9 +105,9 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
                   3-4: Weak - significant skill or experience gaps
                   1-2: Poor fit
 
-                Resume:
+                Candidate profile:
                 ---
-                {{resume}}
+                {{profile}}
                 ---
 
                 Jobs to evaluate (JSON):

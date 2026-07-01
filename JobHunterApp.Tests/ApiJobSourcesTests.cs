@@ -97,6 +97,24 @@ public class ApiJobSourcesTests
     }
 
     [Fact]
+    public void Dedup_FuzzyMatchesSimilarTitles()
+    {
+        var jobs = new[]
+        {
+            new JobListing { Id = "remotive-1", Title = "Senior Backend Engineer",    Company = "TechCorp" },
+            new JobListing { Id = "adzuna-2",   Title = "Senior Back-End Engineer",   Company = "TechCorp" },   // Levenshtein fuzzy match (just punctuation)
+            new JobListing { Id = "remoteok-3", Title = "Backend Engineer",           Company = "TechCorp" },   // different seniority level
+            new JobListing { Id = "arbeit-4",   Title = "Senior Frontend Engineer",   Company = "TechCorp" },   // different role type
+        };
+        var deduped = ApiJobSources.Dedup(jobs);
+        Assert.Equal(3, deduped.Count); // 1 & 2 are dupes, 3 & 4 are unique
+        Assert.Single(deduped.Where(j => j.Id == "remotive-1"));
+        Assert.DoesNotContain(deduped, j => j.Id == "adzuna-2"); // fuzzy matched and removed
+        Assert.Contains(deduped, j => j.Id == "remoteok-3");
+        Assert.Contains(deduped, j => j.Id == "arbeit-4");
+    }
+
+    [Fact]
     public void Parse_RespectsMaxJobsPerSite()
     {
         var items = string.Join(",", Enumerable.Range(0, 50).Select(i =>

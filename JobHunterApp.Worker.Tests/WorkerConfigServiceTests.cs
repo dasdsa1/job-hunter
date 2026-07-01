@@ -73,6 +73,14 @@ public class WorkerConfigServiceTests
         });
 
     [Fact]
+    public void LoadAppConfig_NotificationWebhookUrlEnv_OverridesConfig() =>
+        WithEnv(new() { ["NOTIFICATION_WEBHOOK_URL"] = "https://hooks.example.com/abc" }, () =>
+        {
+            var cfg = WorkerConfigService.LoadAppConfig();
+            Assert.Equal("https://hooks.example.com/abc", cfg.NotificationWebhookUrl);
+        });
+
+    [Fact]
     public void LoadSearchConfig_NoEnvOverrides_DefaultsToHeadlessApiSources() =>
         WithEnv(new() { ["SEARCH_SITES"] = null }, () =>
         {

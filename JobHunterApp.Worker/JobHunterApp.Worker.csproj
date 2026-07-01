@@ -41,6 +41,7 @@
     <Compile Include="../JobHunterApp/Services/ResumeCacheService.cs"           Link="Services/ResumeCacheService.cs" />
     <Compile Include="../JobHunterApp/Services/ResumeParserService.cs"          Link="Services/ResumeParserService.cs" />
     <Compile Include="../JobHunterApp/Services/SearchHistoryService.cs"         Link="Services/SearchHistoryService.cs" />
+    <Compile Include="../JobHunterApp/Services/WebhookNotifierService.cs"      Link="Services/WebhookNotifierService.cs" />
     <Compile Include="../JobHunterApp/Services/Applicators/LetterUploader.cs"   Link="Services/Applicators/LetterUploader.cs" />
     <Compile Include="../JobHunterApp/Services/Applicators/LinkedInApplicator.cs" Link="Services/Applicators/LinkedInApplicator.cs" />
     <Compile Include="../JobHunterApp/Services/Applicators/IndeedApplicator.cs" Link="Services/Applicators/IndeedApplicator.cs" />

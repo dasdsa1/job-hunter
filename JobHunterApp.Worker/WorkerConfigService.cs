@@ -53,6 +53,10 @@ public static class WorkerConfigService
         if (!string.IsNullOrEmpty(adzKey)) config.AdzunaAppKey  = adzKey;
         if (!string.IsNullOrEmpty(adzCty)) config.AdzunaCountry = adzCty;
 
+        var webhookUrl = Environment.GetEnvironmentVariable("NOTIFICATION_WEBHOOK_URL");
+        if (!string.IsNullOrEmpty(webhookUrl))
+            config.NotificationWebhookUrl = webhookUrl;
+
         return config;
     }
 

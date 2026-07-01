@@ -34,4 +34,8 @@ public class AppConfig
     public string AdzunaAppId   { get; set; } = "";
     public string AdzunaAppKey  { get; set; } = "";
     public string AdzunaCountry { get; set; } = "us";   // gb, us, de, fr, ...
+
+    // Optional: POSTs a JSON summary here when a headless run finishes (Slack incoming
+    // webhook, Discord webhook, or any endpoint that accepts a JSON body both understand).
+    public string NotificationWebhookUrl { get; set; } = "";
 }

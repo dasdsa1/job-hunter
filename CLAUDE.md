@@ -9,7 +9,7 @@
 ## Platform architecture (3 apps, polyrepo)
 - job-hunter is ONE of three separate repos in a broader platform. Polyrepo, not monorepo — no cross-repo code sharing except via a shared semantically-versioned `contracts` package (NuGet/npm).
 - Each app independently versioned and deployable. Integration is via MCP + a hub, not direct calls.
-- Source of truth for platform-wide architecture: `DocumentReader/wiki/marketplace-hub/` (external to this repo — consult, don't duplicate here).
+- Source of truth for platform-wide architecture: `../docs/marketplace-hub/` (external to this repo — consult, don't duplicate here).
 - Known gap (do NOT build proactively, only if it's an explicit TODO item): job-hunter has no structured CV/curriculum model — resume is just a file path on disk. A future shared interchange format (via `contracts`) will formalize resume/candidate data. Don't invent this ahead of a TODO asking for it.
 
 ## Cross-cutting conventions (platform-wide, apply here where relevant)

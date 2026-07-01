@@ -5,7 +5,7 @@
 ## Accuracy
 
 ## UX
-- [ ] First-run checklist/wizard
+- [x] First-run checklist/wizard
 - [x] Negative filters — exclude companies/keywords
 - [x] Progress bar during Gemini scoring batches
 

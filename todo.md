@@ -8,7 +8,6 @@
 - [ ] Result notifications — webhook/email/Slack ping when headless run finishes
 
 ## Accuracy
-- [ ] Use captured salary data (RemoteOK/Adzuna) in scoring/filtering — currently dead data
 
 ## UX
 - [ ] First-run checklist/wizard
@@ -22,6 +21,7 @@
 - [ ] RunViewModel — extractable orchestration logic (skip-applied, etc.)
 
 ## Done
+- [x] Use captured salary data (RemoteOK/Adzuna) in scoring — fed into LLM prompt for the consultant take; no hard min-salary filter (free-text formats too inconsistent to parse reliably — revisit if a source gives structured min/max)
 - [x] Resume profile extraction — parse once into structured skills/experience, stop resending raw text per batch
 - [x] Gemini structured output — use `responseSchema` instead of manual JsonNode parsing
 - [x] Fuzzy cross-source dedup — Levenshtein on normalized title (catches Adzuna re-posting Remotive listings)

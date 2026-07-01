@@ -6,13 +6,13 @@
 
 ## UX
 - [ ] First-run checklist/wizard
-- [ ] Negative filters — exclude companies/keywords
+- [x] Negative filters — exclude companies/keywords
 - [ ] Progress bar during Gemini scoring batches
 
 ## Tests
 - [ ] GeminiService — JSON parsing, retry/backoff, batch splitting
-- [ ] ResumeParserService — PDF/DOCX extraction
-- [ ] ApiJobSources.Dedup — more edge cases
+- [x] ResumeParserService — file type validation
+- [x] ApiJobSources.Dedup — edge cases (empty, single, exact dupes, fuzzy, case-insensitive, etc.)
 - [ ] RunViewModel — extractable orchestration logic (skip-applied, etc.)
 
 ## Done

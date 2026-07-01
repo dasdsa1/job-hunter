@@ -123,7 +123,8 @@
                                 Command="{Binding ApplyToSelectedCommand}"
                                 Style="{StaticResource SuccessButton}" Padding="16,10"
                                 HorizontalAlignment="Stretch"
-                                Margin="0,0,0,8"/>
+                                Margin="0,0,0,8"
+                                Visibility="{Binding IsSelectingJobs, Converter={StaticResource BoolVis}}"/>
 
                         <!-- CV choice panel -->
                         <Border Background="{StaticResource SurfaceBrush}"
@@ -133,7 +134,7 @@
                                 <Style TargetType="Border">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding PendingInteraction}" Value="{x:Type vm:CvChoiceRequest}">
+                                        <DataTrigger Binding="{Binding IsCvChoiceRequest}" Value="True">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -162,7 +163,7 @@
                                 <Style TargetType="Border">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding PendingInteraction}" Value="{x:Type vm:LetterChoiceRequest}">
+                                        <DataTrigger Binding="{Binding IsLetterChoiceRequest}" Value="True">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -192,7 +193,7 @@
                                 <Style TargetType="Border">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding PendingInteraction}" Value="{x:Type vm:ReviewRequest}">
+                                        <DataTrigger Binding="{Binding IsReviewRequest}" Value="True">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>

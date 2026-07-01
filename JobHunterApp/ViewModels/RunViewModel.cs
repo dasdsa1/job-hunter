@@ -54,6 +54,22 @@ public partial class RunViewModel : ObservableObject
     // Single string bound to the log TextBox — rebuilt whenever a line is added/cleared.
     public string LogText => string.Join(Environment.NewLine, Log);
 
+    // Computed flags for XAML — DataTrigger Value="{x:Type ...}" compares an instance to a
+    // Type object and never matches, so the panel visibility has to be driven by these instead.
+    public bool IsCvChoiceRequest     => PendingInteraction is CvChoiceRequest;
+    public bool IsLetterChoiceRequest => PendingInteraction is LetterChoiceRequest;
+    public bool IsReviewRequest       => PendingInteraction is ReviewRequest;
+    public bool IsSelectingJobs       => CurrentStep == RunStep.SelectingJobs;
+
+    partial void OnPendingInteractionChanged(InteractionRequest? value)
+    {
+        OnPropertyChanged(nameof(IsCvChoiceRequest));
+        OnPropertyChanged(nameof(IsLetterChoiceRequest));
+        OnPropertyChanged(nameof(IsReviewRequest));
+    }
+
+    partial void OnCurrentStepChanged(RunStep value) => OnPropertyChanged(nameof(IsSelectingJobs));
+
     private AppliedJobsStore _appliedJobs = new();
     private TaskCompletionSource<List<JobMatch>>? _applySelectionTcs;
     private CancellationTokenSource? _cancellationSource;

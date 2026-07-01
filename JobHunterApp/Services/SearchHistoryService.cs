@@ -8,6 +8,7 @@ public class SearchState
     public string JobTitle              { get; set; } = "";
     public string Location              { get; set; } = "Remote";
     public string Keywords              { get; set; } = "";
+    public string ExcludeKeywords       { get; set; } = "";
     public bool   UseLinkedIn           { get; set; } = true;
     public bool   UseIndeed             { get; set; } = true;
     public bool   LinkedInEasyApplyOnly { get; set; } = true;
@@ -18,10 +19,11 @@ public class SearchState
 
 public class SearchHistory
 {
-    public List<string> JobTitles { get; set; } = [];
-    public List<string> Locations { get; set; } = [];
-    public List<string> Keywords  { get; set; } = [];
-    public SearchState  LastState { get; set; } = new();
+    public List<string> JobTitles       { get; set; } = [];
+    public List<string> Locations       { get; set; } = [];
+    public List<string> Keywords        { get; set; } = [];
+    public List<string> ExcludeKeywords { get; set; } = [];
+    public SearchState  LastState       { get; set; } = new();
 }
 
 public static class SearchHistoryService

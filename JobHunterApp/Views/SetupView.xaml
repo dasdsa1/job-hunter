@@ -13,6 +13,26 @@
             <TextBlock Text="Configure your API key, CV file, and recommendation letters."
                        Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,20"/>
 
+            <!-- Getting Started Guide -->
+            <Border Background="#E0F2FE" BorderBrush="#0EA5E9" BorderThickness="1"
+                    CornerRadius="8" Padding="16" Margin="0,0,0,20"
+                    Visibility="{Binding IsSetupComplete, Converter={StaticResource BoolNegativeVisConverter}}">
+                <StackPanel>
+                    <TextBlock Text="🚀 Getting Started" FontSize="13" FontWeight="SemiBold"
+                               Foreground="#0369A1" Margin="0,0,0,8"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="11"
+                               Foreground="#0C4A6E" Margin="0,0,0,12">
+                        Complete these 3 essential steps:
+                    </TextBlock>
+                    <TextBlock Text="1. Select your CV/Resume file (required)"
+                               FontSize="11" Foreground="#0C4A6E" Margin="0,0,0,6"/>
+                    <TextBlock Text="2. Add an AI provider key: Gemini, Groq, or OpenRouter (required)"
+                               FontSize="11" Foreground="#0C4A6E" Margin="0,0,0,6"/>
+                    <TextBlock Text="3. Choose your preferred browser for LinkedIn/Indeed login (optional)"
+                               FontSize="11" Foreground="#0C4A6E" Margin="0,0,0,0" Opacity="0.8"/>
+                </StackPanel>
+            </Border>
+
             <!-- Checklist banner: show what's missing or success -->
             <Border Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1"
                     CornerRadius="8" Padding="12" Margin="0,0,0,20">

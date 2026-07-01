@@ -10,7 +10,7 @@
 - [x] Progress bar during Gemini scoring batches
 
 ## Tests
-- [ ] GeminiService — JSON parsing, retry/backoff, batch splitting
+- [x] GeminiService — JSON parsing, retry/backoff, batch splitting
 - [x] ResumeParserService — file type validation
 - [x] ApiJobSources.Dedup — edge cases (empty, single, exact dupes, fuzzy, case-insensitive, etc.)
 - [ ] RunViewModel — extractable orchestration logic (skip-applied, etc.)

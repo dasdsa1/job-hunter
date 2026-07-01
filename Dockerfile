@@ -20,7 +20,7 @@ RUN /app/JobHunterApp.Worker --version 2>/dev/null || true
 
 # ── Stage 2: runtime with Playwright Chromium ──────────────────────────────────
 # Official Playwright image ships Chromium + all native deps for the matching version
-FROM mcr.microsoft.com/playwright/dotnet:v1.47.0-noble
+FROM mcr.microsoft.com/playwright/dotnet:v1.61.0-noble
 WORKDIR /app
 
 # Copy published app

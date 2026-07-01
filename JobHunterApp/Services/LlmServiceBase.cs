@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using JobHunterApp.Models;
+using PlatformSchemas;
 
 namespace JobHunterApp.Services;
 
@@ -43,6 +44,99 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
 
         await rateLimiter.ThrottleAsync();
         return await GenerateTextAsync(prompt);
+    }
+
+    public async Task<Curriculum> ExtractCurriculumAsync(string resume)
+    {
+        var responseSchema = new
+        {
+            type = "object",
+            properties = new
+            {
+                basics = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        name = new { type = "string" },
+                        label = new { type = "string" },
+                        email = new { type = "string" },
+                        summary = new { type = "string" }
+                    }
+                },
+                work = new
+                {
+                    type = "array",
+                    items = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            name = new { type = "string" },
+                            position = new { type = "string" },
+                            startDate = new { type = "string" },
+                            endDate = new { type = "string" },
+                            summary = new { type = "string" }
+                        }
+                    }
+                },
+                education = new
+                {
+                    type = "array",
+                    items = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            institution = new { type = "string" },
+                            area = new { type = "string" },
+                            studyType = new { type = "string" }
+                        }
+                    }
+                },
+                skills = new
+                {
+                    type = "array",
+                    items = new
+                    {
+                        type = "object",
+                        properties = new { name = new { type = "string" } }
+                    }
+                }
+            },
+            required = new[] { "basics" }
+        };
+
+        var prompt = $"""
+            Extract a structured resume (JSON Resume schema — basics/work/education/skills) from
+            the text below. Only use information present in the text; do not invent employers,
+            dates, or skills.
+
+            Resume:
+            ---
+            {resume}
+            ---
+            """;
+
+        await rateLimiter.ThrottleAsync();
+        var raw = await GenerateJsonAsync(prompt, responseSchema);
+        var node = JsonNode.Parse(raw)?.AsObject();
+
+        return new Curriculum
+        {
+            SchemaVersion = "1.0.0",
+            Basics = node?["basics"]?.Deserialize<object>() ?? new { },
+            Work = node?["work"]?.AsArray()?.Select(w => (object)w!.Deserialize<object>()!).ToList(),
+            Education = node?["education"]?.AsArray()?.Select(e => (object)e!.Deserialize<object>()!).ToList(),
+            Skills = node?["skills"]?.AsArray()?.Select(s => (object)s!.Deserialize<object>()!).ToList(),
+            SourceText = resume,
+            Extraction = new ExtractionMetadata
+            {
+                Method = "ai",
+                Confidence = 0.0, // no per-field confidence from this prompt yet
+                ExtractedAt = DateTimeOffset.UtcNow
+            }
+        };
     }
 
     public async Task<Dictionary<string, MatchResult>> MatchJobsAsync(

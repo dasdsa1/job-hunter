@@ -154,6 +154,43 @@ public class GeminiServiceTests
         Assert.Equal("", result);
     }
 
+    /// <summary>Proves the CBIF integration point: structured resume JSON from the LLM maps onto
+    /// a platform-schemas Curriculum with SourceText/Extraction populated, not just raw text.</summary>
+    [Fact]
+    public async Task ExtractCurriculumAsync_MapsStructuredJsonToCurriculum()
+    {
+        var json = """
+            {"basics":{"name":"Jane Dev","label":"Backend Engineer"},
+             "work":[{"name":"Acme","position":"Engineer"}],
+             "education":[{"institution":"State U"}],
+             "skills":[{"name":"C#"}]}
+            """;
+        var gemini = new FixedJsonGeminiService(new RateLimiter(60), json);
+
+        var curriculum = await gemini.ExtractCurriculumAsync("Jane Dev resume text");
+
+        Assert.Equal("1.0.0", curriculum.SchemaVersion);
+        Assert.Equal("Jane Dev resume text", curriculum.SourceText);
+        Assert.NotNull(curriculum.Basics);
+        Assert.Single(curriculum.Work!);
+        Assert.Single(curriculum.Education!);
+        Assert.Single(curriculum.Skills!);
+        Assert.Equal("ai", curriculum.Extraction!.Method);
+    }
+
+    /// <summary>Mock service that returns a fixed JSON response without making HTTP calls.</summary>
+    private sealed class FixedJsonGeminiService(RateLimiter rateLimiter, string json) : LlmServiceBase(rateLimiter)
+    {
+        protected override Task<string> GenerateJsonAsync(string prompt, object? responseSchema = null) =>
+            Task.FromResult(json);
+
+        protected override Task<string> GenerateTextAsync(string prompt) =>
+            Task.FromResult("");
+
+        protected override Task<string> GenerateStreamingAsync(string prompt, Action<string>? onChunk) =>
+            Task.FromResult("");
+    }
+
     /// <summary>Mock service that tracks batch count without making HTTP calls.</summary>
     private sealed class BatchCountingGeminiService : LlmServiceBase
     {

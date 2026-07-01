@@ -27,12 +27,15 @@
    this repo is on .NET 9. Either down-align or formally isolate it as a module that stays
    on 9, and **record the call in the wiki decision log**. Do not silently mix.
 
-## Platform-integration candidate (do NOT build ahead of an explicit TODO)
+## Platform integration (first CBIF workflow — done)
 
-- job-hunter has **no structured CV/curriculum model** — a resume is just a file path on
-  disk. `platform-schemas` now ships a `Curriculum` (CBIF) entity, so adopting it is the
-  natural way to close this gap **when an integration workflow actually requires it**. Per
-  this repo's CLAUDE.md, don't invent the CV model ahead of a TODO asking for it.
+- **`ExtractCurriculumAsync`** (`ILlmService`/`LlmServiceBase`) extracts a structured
+  `platform-schemas` `Curriculum` (basics/work/education/skills + `SourceText` +
+  `ExtractionMetadata`) from resume text via Gemini structured output, separate from the
+  free-text `ExtractProfileAsync` summary used for match-scoring prompts. `JobHunterApp`
+  now references `PlatformSchemas` (project reference — package isn't published yet).
+  Not yet wired into `RunViewModel`'s run flow or persisted anywhere; that's the next step
+  once there's a concrete consumer (hub sync, or a UI to show the structured profile).
 
 ## Blockers / needs the user
 

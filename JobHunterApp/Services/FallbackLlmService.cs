@@ -1,4 +1,5 @@
 using JobHunterApp.Models;
+using PlatformSchemas;
 
 namespace JobHunterApp.Services;
 
@@ -16,6 +17,9 @@ public class FallbackLlmService(IReadOnlyList<(LlmProvider provider, ILlmService
 
     public async Task<string> ExtractProfileAsync(string resume) =>
         await RunAsync(s => s.ExtractProfileAsync(resume));
+
+    public async Task<Curriculum> ExtractCurriculumAsync(string resume) =>
+        await RunAsync(s => s.ExtractCurriculumAsync(resume));
 
     public async Task<string> GenerateCoverLetterAsync(
         JobListing job, MatchResult match, string resume,

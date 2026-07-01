@@ -16,4 +16,8 @@
     <PackageReference Include="PdfPig" Version="0.1.14" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\platform-schemas\dotnet\PlatformSchemas\PlatformSchemas.csproj" />
+  </ItemGroup>
+
 </Project>

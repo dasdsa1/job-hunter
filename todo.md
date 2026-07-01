@@ -2,7 +2,6 @@
 
 ## Automation
 - [ ] Scheduled headless runs — `--watch`/`SEARCH_INTERVAL_HOURS` so Worker loops without external cron
-- [ ] CI: add Worker test project (WorkerConfigService env parsing)
 - [ ] CI: verify Dockerfile builds (caught 3 local breaks that should've failed in CI)
 - [ ] CI: dependency/secret scanning (Dependabot, gitleaks)
 - [ ] Result notifications — webhook/email/Slack ping when headless run finishes
@@ -21,6 +20,7 @@
 - [ ] RunViewModel — extractable orchestration logic (skip-applied, etc.)
 
 ## Done
+- [x] CI: add Worker test project (WorkerConfigService env parsing)
 - [x] Use captured salary data (RemoteOK/Adzuna) in scoring — fed into LLM prompt for the consultant take; no hard min-salary filter (free-text formats too inconsistent to parse reliably — revisit if a source gives structured min/max)
 - [x] Resume profile extraction — parse once into structured skills/experience, stop resending raw text per batch
 - [x] Gemini structured output — use `responseSchema` instead of manual JsonNode parsing

@@ -13,7 +13,7 @@
 - [x] GeminiService — JSON parsing, retry/backoff, batch splitting
 - [x] ResumeParserService — file type validation
 - [x] ApiJobSources.Dedup — edge cases (empty, single, exact dupes, fuzzy, case-insensitive, etc.)
-- [ ] RunViewModel — extractable orchestration logic (skip-applied, etc.)
+- [x] RunViewModel — extractable orchestration logic (skip-applied, etc.)
 
 ## Done
 - [x] Scheduled headless runs — `SEARCH_INTERVAL_HOURS` so Worker loops without external cron

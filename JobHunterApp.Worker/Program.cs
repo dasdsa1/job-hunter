@@ -123,7 +123,7 @@ if (string.IsNullOrEmpty(resume))
 
 AppLogger.Info("Scoring jobs with Gemini…");
 var rateLimiter = new RateLimiter(appConfig.GeminiRpm);
-var gemini      = new GeminiService(appConfig.ApiKey, appConfig.GeminiModel, rateLimiter);
+var gemini      = LlmServiceFactory.Create(appConfig, rateLimiter);
 var scores  = await gemini.MatchJobsAsync(allJobs, resume);
 
 var matches = allJobs

@@ -2,9 +2,11 @@
 
 public enum BrowserMode { Managed, ConnectToBrowser }
 public enum PreferredBrowser { Chrome, Edge, Firefox }
+public enum LlmProvider { Gemini, Groq, OpenRouter }
 
 public class AppConfig
 {
+    public LlmProvider Provider    { get; set; } = LlmProvider.Gemini;
     public string      ApiKey      { get; set; } = "";
     public string      GeminiModel { get; set; } = "gemini-flash-lite-latest";
     public int         GeminiRpm   { get; set; } = 15;

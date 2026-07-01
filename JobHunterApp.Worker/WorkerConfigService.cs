@@ -34,10 +34,15 @@ public static class WorkerConfigService
         if (!string.IsNullOrEmpty(apiKey))
             config.ApiKey = apiKey;
 
+        var provider = Environment.GetEnvironmentVariable("LLM_PROVIDER");
+        if (!string.IsNullOrEmpty(provider) && Enum.TryParse<LlmProvider>(provider, true, out var p))
+            config.Provider = p;
+
         var model = Environment.GetEnvironmentVariable("GEMINI_MODEL");
         if (!string.IsNullOrEmpty(model))
             config.GeminiModel = model;
-        else if (RetiredModels.Contains(config.GeminiModel) || string.IsNullOrEmpty(config.GeminiModel))
+        else if (config.Provider == LlmProvider.Gemini &&
+                 (RetiredModels.Contains(config.GeminiModel) || string.IsNullOrEmpty(config.GeminiModel)))
             config.GeminiModel = new AppConfig().GeminiModel;
 
         // Adzuna credentials via env (optional)

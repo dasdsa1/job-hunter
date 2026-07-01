@@ -1,62 +1,49 @@
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace JobHunterApp.Services;
 
-public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
+/// <summary>Talks to any OpenAI-compatible chat completions endpoint (Groq, OpenRouter, ...).</summary>
+public class OpenAiCompatibleService(string baseUrl, string apiKey, string model, RateLimiter rateLimiter)
     : LlmServiceBase(rateLimiter)
 {
     private static readonly HttpClient _http = new()
     {
         Timeout = TimeSpan.FromSeconds(60)
     };
-    private readonly string _baseUrl =
-        $"https://generativelanguage.googleapis.com/v1beta/models/{model}";
     private const int MaxRetries = 4;
     private static readonly int[] BackoffMs = { 2000, 4000, 8000, 16000 };
 
     protected override async Task<string> GenerateJsonAsync(string prompt, object? responseSchema = null)
     {
-        object generationConfig = responseSchema switch
-        {
-            null => new { responseMimeType = "application/json" },
-            _ => new
-            {
-                responseMimeType = "application/json",
-                responseSchema
-            }
-        };
-
         var body = new
         {
-            contents = new[] { new { parts = new[] { new { text = prompt } } } },
-            generationConfig
+            model,
+            messages = new[] { new { role = "user", content = prompt } },
+            response_format = new { type = "json_object" }
         };
-        var response = await PostAsync(body, stream: false);
+        var response = await PostAsync(body);
         return ExtractText(response);
     }
 
     protected override async Task<string> GenerateTextAsync(string prompt)
     {
-        var body = new { contents = new[] { new { parts = new[] { new { text = prompt } } } } };
-        var response = await PostAsync(body, stream: false);
+        var body = new { model, messages = new[] { new { role = "user", content = prompt } } };
+        var response = await PostAsync(body);
         return ExtractText(response);
     }
 
     protected override async Task<string> GenerateStreamingAsync(string prompt, Action<string>? onChunk)
     {
-        var body = new { contents = new[] { new { parts = new[] { new { text = prompt } } } } };
-
         if (onChunk is null)
-        {
-            var response = await PostAsync(body, stream: false);
-            return ExtractText(response);
-        }
+            return await GenerateTextAsync(prompt);
 
+        var body = new { model, messages = new[] { new { role = "user", content = prompt } }, stream = true };
         var json = JsonSerializer.Serialize(body);
-        var url = $"{_baseUrl}:streamGenerateContent?alt=sse&key={apiKey}";
+        var url  = $"{baseUrl}/chat/completions";
 
         for (var attempt = 0; attempt < MaxRetries; attempt++)
         {
@@ -66,6 +53,7 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
                 {
                     Content = new StringContent(json, Encoding.UTF8, "application/json")
                 };
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
                 using var resp = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
 
@@ -77,7 +65,7 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
                         if (resp.Headers.RetryAfter?.Delta.HasValue == true)
                             waitMs = (int)resp.Headers.RetryAfter.Delta.Value.TotalMilliseconds;
 
-                        AppLogger.Info($"Gemini stream rate limited (HTTP {resp.StatusCode}); retry in {waitMs}ms (attempt {attempt + 1}/{MaxRetries})");
+                        AppLogger.Info($"LLM stream rate limited (HTTP {resp.StatusCode}); retry in {waitMs}ms (attempt {attempt + 1}/{MaxRetries})");
                         await Task.Delay(waitMs);
                         continue;
                     }
@@ -97,7 +85,7 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
                     try
                     {
                         var chunk = JsonNode.Parse(data);
-                        var text  = chunk?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.GetValue<string>() ?? "";
+                        var text  = chunk?["choices"]?[0]?["delta"]?["content"]?.GetValue<string>() ?? "";
                         if (!string.IsNullOrEmpty(text))
                         {
                             sb.Append(text);
@@ -113,33 +101,35 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
             }
             catch (HttpRequestException ex) when (attempt < MaxRetries - 1)
             {
-                AppLogger.Info($"Gemini stream request failed; retry in {BackoffMs[attempt]}ms: {ex.Message}");
+                AppLogger.Info($"LLM stream request failed; retry in {BackoffMs[attempt]}ms: {ex.Message}");
                 await Task.Delay(BackoffMs[attempt]);
                 continue;
             }
         }
 
-        throw new Exception("Gemini streaming request failed after max retries");
+        throw new Exception("LLM streaming request failed after max retries");
     }
 
-    private async Task<string> PostAsync(object body, bool stream)
+    private async Task<string> PostAsync(object body)
     {
-        var endpoint = stream ? "streamGenerateContent" : "generateContent";
-        var json     = JsonSerializer.Serialize(body);
-        var url      = $"{_baseUrl}:{endpoint}?key={apiKey}";
+        var json = JsonSerializer.Serialize(body);
+        var url  = $"{baseUrl}/chat/completions";
 
         for (var attempt = 0; attempt < MaxRetries; attempt++)
         {
             try
             {
-                var response = await _http.PostAsync(
-                    url,
-                    new StringContent(json, Encoding.UTF8, "application/json"));
+                var request = new HttpRequestMessage(HttpMethod.Post, url)
+                {
+                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                };
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+                var response = await _http.SendAsync(request);
 
                 if (response.IsSuccessStatusCode)
                     return await response.Content.ReadAsStringAsync();
 
-                // Handle rate limit / service unavailable
                 if ((int)response.StatusCode is 429 or 503)
                 {
                     if (attempt < MaxRetries - 1)
@@ -148,7 +138,7 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
                         if (response.Headers.RetryAfter?.Delta.HasValue == true)
                             waitMs = (int)response.Headers.RetryAfter.Delta.Value.TotalMilliseconds;
 
-                        AppLogger.Info($"Gemini rate limited (HTTP {response.StatusCode}); retry in {waitMs}ms (attempt {attempt + 1}/{MaxRetries})");
+                        AppLogger.Info($"LLM rate limited (HTTP {response.StatusCode}); retry in {waitMs}ms (attempt {attempt + 1}/{MaxRetries})");
                         await Task.Delay(waitMs);
                         continue;
                     }
@@ -159,13 +149,13 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
             }
             catch (HttpRequestException ex) when (attempt < MaxRetries - 1)
             {
-                AppLogger.Info($"Gemini request failed; retry in {BackoffMs[attempt]}ms: {ex.Message}");
+                AppLogger.Info($"LLM request failed; retry in {BackoffMs[attempt]}ms: {ex.Message}");
                 await Task.Delay(BackoffMs[attempt]);
                 continue;
             }
         }
 
-        throw new Exception("Gemini request failed after max retries");
+        throw new Exception("LLM request failed after max retries");
     }
 
     private static string ExtractText(string json)
@@ -173,7 +163,7 @@ public class GeminiService(string apiKey, string model, RateLimiter rateLimiter)
         try
         {
             var node = JsonNode.Parse(json);
-            return node?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.GetValue<string>() ?? "";
+            return node?["choices"]?[0]?["message"]?["content"]?.GetValue<string>() ?? "";
         }
         catch (Exception ex)
         {

@@ -31,6 +31,10 @@
     <Compile Include="../JobHunterApp/Services/CoverLetterService.cs"           Link="Services/CoverLetterService.cs" />
     <Compile Include="../JobHunterApp/Services/CvTailorService.cs"              Link="Services/CvTailorService.cs" />
     <Compile Include="../JobHunterApp/Services/GeminiService.cs"                Link="Services/GeminiService.cs" />
+    <Compile Include="../JobHunterApp/Services/ILlmService.cs"                  Link="Services/ILlmService.cs" />
+    <Compile Include="../JobHunterApp/Services/LlmServiceBase.cs"               Link="Services/LlmServiceBase.cs" />
+    <Compile Include="../JobHunterApp/Services/LlmServiceFactory.cs"            Link="Services/LlmServiceFactory.cs" />
+    <Compile Include="../JobHunterApp/Services/OpenAiCompatibleService.cs"      Link="Services/OpenAiCompatibleService.cs" />
     <Compile Include="../JobHunterApp/Services/RateLimiter.cs"                  Link="Services/RateLimiter.cs" />
     <Compile Include="../JobHunterApp/Services/ReporterService.cs"              Link="Services/ReporterService.cs" />
     <Compile Include="../JobHunterApp/Services/ResumeParserService.cs"          Link="Services/ResumeParserService.cs" />

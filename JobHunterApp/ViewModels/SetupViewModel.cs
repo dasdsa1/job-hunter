@@ -11,6 +11,7 @@ namespace JobHunterApp.ViewModels;
 
 public partial class SetupViewModel : ObservableObject
 {
+    [ObservableProperty] private LlmProvider _provider     = LlmProvider.Gemini;
     [ObservableProperty] private string      _apiKey       = "";
     [ObservableProperty] private string      _geminiModel  = "gemini-flash-lite-latest";
     [ObservableProperty] private int         _geminiRpm    = 15;
@@ -33,9 +34,16 @@ public partial class SetupViewModel : ObservableObject
 
     public ObservableCollection<FileEntry> Letters { get; } = [];
 
+    partial void OnProviderChanged(LlmProvider value)
+    {
+        GeminiModel = Services.LlmServiceFactory.DefaultModel(value);
+        GeminiRpm   = value == LlmProvider.Gemini ? 15 : 30;
+    }
+
     public SetupViewModel()
     {
         var cfg = FileConfigService.Load();
+        Provider    = cfg.Provider;
         ApiKey      = cfg.ApiKey;
         GeminiModel = cfg.GeminiModel;
         GeminiRpm   = cfg.GeminiRpm;
@@ -185,8 +193,9 @@ public partial class SetupViewModel : ObservableObject
         try
         {
             var rateLimiter = new RateLimiter(GeminiRpm);
-            var gemini = new GeminiService(ApiKey.Trim(), GeminiModel.Trim(), rateLimiter);
-            var (ok, message) = await gemini.TestConnectionAsync();
+            var testCfg = new AppConfig { Provider = Provider, ApiKey = ApiKey.Trim(), GeminiModel = GeminiModel.Trim() };
+            var llm = LlmServiceFactory.Create(testCfg, rateLimiter);
+            var (ok, message) = await llm.TestConnectionAsync();
             GeminiTestOk = ok;
             GeminiTestStatus = message;
         }
@@ -224,6 +233,7 @@ public partial class SetupViewModel : ObservableObject
     {
         var cfg = new AppConfig
         {
+            Provider    = Provider,
             ApiKey      = ApiKey.Trim(),
             GeminiModel = GeminiModel.Trim(),
             GeminiRpm   = GeminiRpm,

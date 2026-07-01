@@ -132,14 +132,36 @@
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                     CornerRadius="8" Padding="20" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="GEMINI API KEY" FontSize="11" FontWeight="SemiBold"
+                    <TextBlock Text="AI PROVIDER" FontSize="11" FontWeight="SemiBold"
                                Foreground="{StaticResource TextSecondaryBrush}"
                                Margin="0,0,0,12"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <RadioButton Content="Gemini"
+                                     IsChecked="{Binding Provider,
+                                         Converter={StaticResource EnumBoolConverter},
+                                         ConverterParameter=Gemini}"
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     Margin="0,0,24,0"
+                                     ToolTip="Free key at aistudio.google.com/app/apikey"/>
+                        <RadioButton Content="Groq"
+                                     IsChecked="{Binding Provider,
+                                         Converter={StaticResource EnumBoolConverter},
+                                         ConverterParameter=Groq}"
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     Margin="0,0,24,0"
+                                     ToolTip="Free key at console.groq.com/keys"/>
+                        <RadioButton Content="OpenRouter"
+                                     IsChecked="{Binding Provider,
+                                         Converter={StaticResource EnumBoolConverter},
+                                         ConverterParameter=OpenRouter}"
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     ToolTip="Free key at openrouter.ai/keys — use a model tagged :free"/>
+                    </StackPanel>
                     <TextBox Text="{Binding ApiKey, UpdateSourceTrigger=PropertyChanged}"
                              FontFamily="Consolas" FontSize="12"/>
-                    <TextBlock Text="Get a free key at aistudio.google.com/app/apikey"
+                    <TextBlock Text="Gemini: aistudio.google.com/app/apikey · Groq: console.groq.com/keys · OpenRouter: openrouter.ai/keys"
                                Foreground="{StaticResource TextMutedBrush}"
-                               FontSize="11" Margin="0,6,0,0"/>
+                               FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
 
                     <Grid Margin="0,16,0,0">
                         <Grid.ColumnDefinitions>
@@ -162,7 +184,8 @@
                         <StackPanel Grid.Column="4">
                             <TextBlock Text="Free tier" Foreground="{StaticResource TextSecondaryBrush}"
                                        FontSize="11" Margin="0,0,0,4"/>
-                            <TextBlock Text="15 RPM" Foreground="{StaticResource TextMutedBrush}"
+                            <TextBlock Text="{Binding GeminiRpm, StringFormat='{}{0} RPM'}"
+                                       Foreground="{StaticResource TextMutedBrush}"
                                        FontSize="12" VerticalAlignment="Center" Margin="0,7,0,0"/>
                         </StackPanel>
                     </Grid>

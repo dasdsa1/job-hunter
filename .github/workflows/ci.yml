@@ -40,3 +40,6 @@ jobs:
 
       - name: Build worker
         run: dotnet build JobHunterApp.Worker/JobHunterApp.Worker.csproj -c Release
+
+      - name: Test worker
+        run: dotnet test JobHunterApp.Worker.Tests/JobHunterApp.Worker.Tests.csproj -c Release --logger "console;verbosity=normal"

@@ -7,7 +7,7 @@
 ## UX
 - [ ] First-run checklist/wizard
 - [x] Negative filters — exclude companies/keywords
-- [ ] Progress bar during Gemini scoring batches
+- [x] Progress bar during Gemini scoring batches
 
 ## Tests
 - [ ] GeminiService — JSON parsing, retry/backoff, batch splitting

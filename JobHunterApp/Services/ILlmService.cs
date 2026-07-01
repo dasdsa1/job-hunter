@@ -19,5 +19,5 @@ public interface ILlmService
         IEnumerable<string> letterSnippets,
         Action<string>? onChunk = null);
 
-    Task<string> TailorCvAsync(string originalCv, JobListing job, MatchResult match);
+    Task<(string cv, List<string> verificationIssues)> TailorCvAsync(string originalCv, JobListing job, MatchResult match);
 }

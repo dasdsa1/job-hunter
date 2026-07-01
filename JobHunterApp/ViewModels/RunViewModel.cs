@@ -37,6 +37,13 @@ public class ReviewRequest(string message) : InteractionRequest
     public TaskCompletionSource<bool> Tcs { get; } = new();
 }
 
+public class VerificationRequest(string jobTitle, List<string> issues) : InteractionRequest
+{
+    public string JobTitle { get; } = jobTitle;
+    public List<string> Issues { get; } = issues;
+    public TaskCompletionSource<bool> Tcs { get; } = new(); // true = proceed, false = skip
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 
 public partial class RunViewModel : ObservableObject
@@ -57,16 +64,18 @@ public partial class RunViewModel : ObservableObject
 
     // Computed flags for XAML — DataTrigger Value="{x:Type ...}" compares an instance to a
     // Type object and never matches, so the panel visibility has to be driven by these instead.
-    public bool IsCvChoiceRequest     => PendingInteraction is CvChoiceRequest;
-    public bool IsLetterChoiceRequest => PendingInteraction is LetterChoiceRequest;
-    public bool IsReviewRequest       => PendingInteraction is ReviewRequest;
-    public bool IsSelectingJobs       => CurrentStep == RunStep.SelectingJobs;
+    public bool IsCvChoiceRequest       => PendingInteraction is CvChoiceRequest;
+    public bool IsLetterChoiceRequest   => PendingInteraction is LetterChoiceRequest;
+    public bool IsReviewRequest         => PendingInteraction is ReviewRequest && PendingInteraction is not VerificationRequest;
+    public bool IsVerificationRequest   => PendingInteraction is VerificationRequest;
+    public bool IsSelectingJobs         => CurrentStep == RunStep.SelectingJobs;
 
     partial void OnPendingInteractionChanged(InteractionRequest? value)
     {
         OnPropertyChanged(nameof(IsCvChoiceRequest));
         OnPropertyChanged(nameof(IsLetterChoiceRequest));
         OnPropertyChanged(nameof(IsReviewRequest));
+        OnPropertyChanged(nameof(IsVerificationRequest));
     }
 
     partial void OnCurrentStepChanged(RunStep value) => OnPropertyChanged(nameof(IsSelectingJobs));
@@ -113,7 +122,19 @@ public partial class RunViewModel : ObservableObject
     [RelayCommand]
     private void SkipApplication()
     {
-        if (PendingInteraction is ReviewRequest r) r.Tcs.TrySetResult(false);
+        if (PendingInteraction is ReviewRequest r && PendingInteraction is not VerificationRequest) r.Tcs.TrySetResult(false);
+    }
+
+    [RelayCommand]
+    private void ConfirmVerificationAndProceed()
+    {
+        if (PendingInteraction is VerificationRequest r) r.Tcs.TrySetResult(true);
+    }
+
+    [RelayCommand]
+    private void SkipVerificationDueToIssues()
+    {
+        if (PendingInteraction is VerificationRequest r) r.Tcs.TrySetResult(false);
     }
 
     [RelayCommand]
@@ -417,7 +438,28 @@ public partial class RunViewModel : ObservableObject
                 AddLog("Tailoring CV…");
                 try
                 {
-                    activeResume = await gemini.TailorCvAsync(resume, jm.Job, jm.Match);
+                    var (tailoredCv, issues) = await gemini.TailorCvAsync(resume, jm.Job, jm.Match);
+
+                    // P0 #5: Show verification issues to user if any found
+                    if (issues.Count > 0)
+                    {
+                        AddLog($"⚠️  CV verification found {issues.Count} potential issue(s):");
+                        foreach (var issue in issues)
+                            AddLog($"   - {issue}");
+
+                        var verReq = new VerificationRequest(jm.Job.Title, issues);
+                        await ShowInteractionAsync(verReq);
+                        var proceedDespiteIssues = await verReq.Tcs.Task;
+
+                        if (!proceedDespiteIssues)
+                        {
+                            AddLog("Skipped due to CV verification issues.");
+                            continue;
+                        }
+                        AddLog("Proceeding with tailored CV despite issues.");
+                    }
+
+                    activeResume = tailoredCv;
                     var docxPath = CvTailorService.SaveAsDocx(activeResume, jm.Job);
                     AddLog($"Tailored CV saved → {docxPath}");
                 }

@@ -22,7 +22,7 @@ public class FallbackLlmService(IReadOnlyList<(LlmProvider provider, ILlmService
         IEnumerable<string> letterSnippets, Action<string>? onChunk = null) =>
         await RunAsync(s => s.GenerateCoverLetterAsync(job, match, resume, letterSnippets, onChunk));
 
-    public async Task<string> TailorCvAsync(string originalCv, JobListing job, MatchResult match) =>
+    public async Task<(string cv, List<string> verificationIssues)> TailorCvAsync(string originalCv, JobListing job, MatchResult match) =>
         await RunAsync(s => s.TailorCvAsync(originalCv, job, match));
 
     private async Task<T> RunAsync<T>(Func<ILlmService, Task<T>> call)

@@ -216,7 +216,7 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
         return await GenerateStreamingAsync(prompt, onChunk);
     }
 
-    public async Task<string> TailorCvAsync(
+    public async Task<(string cv, List<string> verificationIssues)> TailorCvAsync(
         string originalCv, JobListing job, MatchResult match)
     {
         var prompt = $"""
@@ -254,6 +254,6 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
             AppLogger.Warn($"CV tailoring verification found issues for {job.Company}/{job.Title}: {string.Join("; ", issues)}");
         }
 
-        return tailoredCv;
+        return (tailoredCv, issues);
     }
 }

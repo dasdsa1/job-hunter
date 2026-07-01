@@ -18,3 +18,5 @@ data/config.json
 
 # Generated knowledge graph
 graphify-out/
+
+.claude/settings.local.json

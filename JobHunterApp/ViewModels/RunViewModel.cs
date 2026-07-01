@@ -74,9 +74,11 @@ public partial class RunViewModel : ObservableObject
     private AppliedJobsStore _appliedJobs = new();
     private TaskCompletionSource<List<JobMatch>>? _applySelectionTcs;
     private CancellationTokenSource? _cancellationSource;
+    private readonly IDispatcher _dispatcher;
 
-    public RunViewModel()
+    public RunViewModel(IDispatcher? dispatcher = null)
     {
+        _dispatcher = dispatcher ?? new WpfDispatcher();
         Log.CollectionChanged += (_, _) => OnPropertyChanged(nameof(LogText));
         _appliedJobs = AppliedJobsService.Load();
     }
@@ -375,7 +377,7 @@ public partial class RunViewModel : ObservableObject
         foreach (var m in matches)
         {
             m.IsSelected = m.Match.Score >= 8;
-            Application.Current.Dispatcher.Invoke(() => Jobs.Add(m));
+            _dispatcher.Invoke(() => Jobs.Add(m));
         }
 
         _applySelectionTcs = new TaskCompletionSource<List<JobMatch>>();
@@ -440,7 +442,7 @@ public partial class RunViewModel : ObservableObject
                 var snippets = selectedLetters.Select(l => letterTexts.TryGetValue(l.Key, out var t) ? t : "");
                 jm.CoverLetter = await gemini.GenerateCoverLetterAsync(
                     jm.Job, jm.Match, activeResume, snippets,
-                    chunk => Application.Current.Dispatcher.Invoke(
+                    chunk => _dispatcher.Invoke(
                         () => CoverLetterPreview += chunk));
                 AddLog($"✔  Cover letter ready ({jm.CoverLetter.Split(' ').Length} words)");
 
@@ -522,7 +524,7 @@ public partial class RunViewModel : ObservableObject
 
     private Task ShowInteractionAsync(InteractionRequest request)
     {
-        Application.Current.Dispatcher.Invoke(() => PendingInteraction = request);
+        _dispatcher.Invoke(() => PendingInteraction = request);
         return request switch
         {
             CvChoiceRequest r     => r.Tcs.Task.ContinueWith(_ => ClearInteraction()),
@@ -533,7 +535,7 @@ public partial class RunViewModel : ObservableObject
     }
 
     private void ClearInteraction() =>
-        Application.Current.Dispatcher.Invoke(() => PendingInteraction = null);
+        _dispatcher.Invoke(() => PendingInteraction = null);
 
     private void AddLog(string msg)
     {
@@ -541,7 +543,7 @@ public partial class RunViewModel : ObservableObject
         // DispatcherPriority.Background (4) is BELOW Render (7).
         // This guarantees layout always completes before the next Log.Add fires,
         // preventing VirtualizingStackPanel.MeasureChild from seeing a mid-add state.
-        Application.Current.Dispatcher.BeginInvoke(
+        _dispatcher.Invoke(
             System.Windows.Threading.DispatcherPriority.Background,
             () =>
             {

@@ -18,3 +18,9 @@
 | Article | Summary | Updated |
 |---|---|---|
 | [Job Board Scraping Risk (LinkedIn / Indeed)](automation-compliance/job-board-scraping-risk.md) | LinkedIn ban-rate data, hiQ v. LinkedIn case history, compliance-by-architecture pattern (API-first over scraping) | 2026-07-01 |
+
+## competitive-research
+
+| Article | Summary | Updated |
+|---|---|---|
+| [Auto-Apply Tool Landscape](competitive-research/auto-apply-tool-landscape.md) | User opinions on LazyApply/JobRight/Sonara/Jobscan, ghost-job stats, recruiter backlash against bot spam, prioritized improvement ideas for job-hunter | 2026-07-01 |

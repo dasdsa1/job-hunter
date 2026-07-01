@@ -4,7 +4,10 @@ This guide covers deploying the headless job-hunter Worker to an AWS EC2 instanc
 
 ## Prerequisites
 
-- AWS EC2 instance (Ubuntu 24.04 LTS recommended, t3.micro or larger)
+- AWS EC2 instance (Ubuntu 24.04 LTS recommended)
+  - **Recommended:** t3.micro or t4g.micro **Spot Instance** (up to 90% cheaper than on-demand)
+  - Why Spot? The Worker is fault-tolerant and idempotent — if an instance is interrupted, just restart the run; no data loss
+  - If you need guaranteed uptime, use on-demand instead
 - Docker and Docker Compose installed on EC2
 - Gemini API key (from [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey))
 - SSH access to your EC2 instance

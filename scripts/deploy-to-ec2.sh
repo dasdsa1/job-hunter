@@ -26,7 +26,10 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 echo "🔨 Building Docker image..."
 cd "$PROJECT_ROOT"
-docker build -t job-hunter-worker:latest .
+
+# Tag with git SHA for reproducibility and rollback capability
+GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+docker build -t job-hunter-worker:latest -t job-hunter-worker:$GIT_SHA .
 
 if [ -n "$DOCKER_REGISTRY" ]; then
     echo "📦 Pushing to registry: $DOCKER_REGISTRY"

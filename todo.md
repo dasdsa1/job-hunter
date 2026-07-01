@@ -8,7 +8,6 @@
 - [ ] Result notifications — webhook/email/Slack ping when headless run finishes
 
 ## Accuracy
-- [ ] Resume profile extraction — parse once into structured skills/experience, stop resending raw text per batch
 - [ ] Use captured salary data (RemoteOK/Adzuna) in scoring/filtering — currently dead data
 
 ## UX
@@ -23,6 +22,7 @@
 - [ ] RunViewModel — extractable orchestration logic (skip-applied, etc.)
 
 ## Done
+- [x] Resume profile extraction — parse once into structured skills/experience, stop resending raw text per batch
 - [x] Gemini structured output — use `responseSchema` instead of manual JsonNode parsing
 - [x] Fuzzy cross-source dedup — Levenshtein on normalized title (catches Adzuna re-posting Remotive listings)
 - [x] Pre-flight validation — "Test connection" button for Gemini/Adzuna keys in Setup + multi-provider LLM fallback

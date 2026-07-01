@@ -47,6 +47,14 @@ public static class SourceHelpers
             .Distinct()
             .ToArray();
 
+    /// <summary>Exclude keyword tokens, lowercased.</summary>
+    public static string[] ExcludeKeywords(SearchConfig config) =>
+        config.ExcludeKeywords
+            .Split([' ', ',', '\t'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(t => t.ToLowerInvariant())
+            .Distinct()
+            .ToArray();
+
     /// <summary>
     /// Client-side relevance filter for sources without a server search param.
     /// Matches when ANY keyword token appears as a whole word in title/company/description
@@ -58,5 +66,16 @@ public static class SourceHelpers
         if (keywords.Length == 0) return true;
         var hay = $"{job.Title} {job.Company} {job.Description}".ToLowerInvariant();
         return keywords.Any(kw => Regex.IsMatch(hay, $@"\b{Regex.Escape(kw)}\b"));
+    }
+
+    /// <summary>
+    /// Exclusion filter: returns false if ANY exclude keyword matches in title/company/description.
+    /// Empty exclude set ⇒ nothing excluded (returns true).
+    /// </summary>
+    public static bool IsNotExcluded(JobListing job, string[] excludeKeywords)
+    {
+        if (excludeKeywords.Length == 0) return true;
+        var hay = $"{job.Title} {job.Company} {job.Description}".ToLowerInvariant();
+        return !excludeKeywords.Any(kw => Regex.IsMatch(hay, $@"\b{Regex.Escape(kw)}\b"));
     }
 }

@@ -63,6 +63,8 @@ public class AdzunaSource : IJobSource
         var arr = JsonNode.Parse(json)?["results"]?.AsArray();
         if (arr is null) return jobs;
 
+        var excludeKeywords = SourceHelpers.ExcludeKeywords(config);
+
         foreach (var j in arr)
         {
             if (j is null) continue;
@@ -77,7 +79,7 @@ public class AdzunaSource : IJobSource
                 if (min.HasValue || max.HasValue)
                     salary = $"{min:N0}–{max:N0}";
 
-                jobs.Add(new JobListing
+                var job = new JobListing
                 {
                     Id          = $"adzuna-{j["id"]?.ToString() ?? Guid.NewGuid().ToString()}",
                     Title       = SourceHelpers.StripHtml(title).Trim(),
@@ -88,7 +90,10 @@ public class AdzunaSource : IJobSource
                     Source      = "adzuna",
                     PostedDate  = j["created"]?.GetValue<string>(),
                     Salary      = salary,
-                });
+                };
+
+                if (SourceHelpers.IsNotExcluded(job, excludeKeywords))
+                    jobs.Add(job);
             }
             catch (Exception ex)
             {

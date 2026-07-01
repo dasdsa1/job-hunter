@@ -33,6 +33,7 @@ public class ArbeitnowSource : IJobSource
         if (arr is null) return jobs;
 
         var keywords = SourceHelpers.Keywords(config);
+        var excludeKeywords = SourceHelpers.ExcludeKeywords(config);
 
         foreach (var j in arr)
         {
@@ -53,7 +54,7 @@ public class ArbeitnowSource : IJobSource
                     Source      = "arbeitnow",
                     PostedDate  = j["created_at"]?.ToString(),
                 };
-                if (SourceHelpers.MatchesKeywords(job, keywords))
+                if (SourceHelpers.MatchesKeywords(job, keywords) && SourceHelpers.IsNotExcluded(job, excludeKeywords))
                     jobs.Add(job);
             }
             catch (Exception ex)

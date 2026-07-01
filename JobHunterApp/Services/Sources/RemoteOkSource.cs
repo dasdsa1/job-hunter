@@ -33,6 +33,7 @@ public class RemoteOkSource : IJobSource
         if (arr is null) return jobs;
 
         var keywords = SourceHelpers.Keywords(config);
+        var excludeKeywords = SourceHelpers.ExcludeKeywords(config);
 
         foreach (var j in arr)
         {
@@ -61,7 +62,7 @@ public class RemoteOkSource : IJobSource
                     PostedDate  = j["date"]?.GetValue<string>(),
                     Salary      = salary,
                 };
-                if (SourceHelpers.MatchesKeywords(job, keywords))
+                if (SourceHelpers.MatchesKeywords(job, keywords) && SourceHelpers.IsNotExcluded(job, excludeKeywords))
                     jobs.Add(job);
             }
             catch (Exception ex)

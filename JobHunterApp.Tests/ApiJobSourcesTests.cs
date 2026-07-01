@@ -214,4 +214,75 @@ public class ApiJobSourcesTests
         var deduped = ApiJobSources.Dedup(jobs);
         Assert.Single(deduped);
     }
+
+    [Fact]
+    public void ExcludeKeywords_Empty_ReturnsEmpty()
+    {
+        var config = Cfg();
+        var keywords = SourceHelpers.ExcludeKeywords(config);
+        Assert.Empty(keywords);
+    }
+
+    [Fact]
+    public void ExcludeKeywords_ParsesSpaceDelimitedTerms()
+    {
+        var config = new SearchConfig { ExcludeKeywords = "contractor remote-only" };
+        var keywords = SourceHelpers.ExcludeKeywords(config);
+        Assert.Equal(2, keywords.Length);
+        Assert.Contains("contractor", keywords);
+        Assert.Contains("remote-only", keywords);
+    }
+
+    [Fact]
+    public void IsNotExcluded_NoExcludes_ReturnsTrue()
+    {
+        var job = new JobListing { Title = "Engineer", Company = "Acme", Description = "builds stuff" };
+        var result = SourceHelpers.IsNotExcluded(job, []);
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsNotExcluded_MatchesTitle_ReturnsFalse()
+    {
+        var job = new JobListing { Title = "Contractor Engineer", Company = "Acme", Description = "contract work" };
+        var excludeKeywords = new[] { "contractor" };
+        var result = SourceHelpers.IsNotExcluded(job, excludeKeywords);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsNotExcluded_MatchesDescription_ReturnsFalse()
+    {
+        var job = new JobListing { Title = "Senior Engineer", Company = "Acme", Description = "remote-only position" };
+        var excludeKeywords = new[] { "remote-only" };
+        var result = SourceHelpers.IsNotExcluded(job, excludeKeywords);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsNotExcluded_MatchesCompany_ReturnsFalse()
+    {
+        var job = new JobListing { Title = "Engineer", Company = "Startup-temp", Description = "exciting role" };
+        var excludeKeywords = new[] { "startup-temp" };
+        var result = SourceHelpers.IsNotExcluded(job, excludeKeywords);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsNotExcluded_NoMatch_ReturnsTrue()
+    {
+        var job = new JobListing { Title = "Senior Engineer", Company = "Acme", Description = "permanent role" };
+        var excludeKeywords = new[] { "contractor", "remote-only" };
+        var result = SourceHelpers.IsNotExcluded(job, excludeKeywords);
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsNotExcluded_WordBoundaryRequired()
+    {
+        var job = new JobListing { Title = "Senior Engineer", Company = "Microsoft", Description = "good opportunity" };
+        var excludeKeywords = new[] { "soft" }; // Should not match "Microsoft"
+        var result = SourceHelpers.IsNotExcluded(job, excludeKeywords);
+        Assert.True(result);
+    }
 }

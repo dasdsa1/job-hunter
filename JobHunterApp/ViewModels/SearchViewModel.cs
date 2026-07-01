@@ -16,14 +16,16 @@ public partial class SearchViewModel : ObservableObject
     private readonly ObservableCollection<string> _jobTitleColl = [];
     private readonly ObservableCollection<string> _locationColl = [];
     private readonly ObservableCollection<string> _keywordsColl = [];
+    private readonly ObservableCollection<string> _excludeKeywordsColl = [];
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
     [NotifyPropertyChangedFor(nameof(ValidationMessage))]
     private string _jobTitle = "";
 
-    [ObservableProperty] private string _location  = "Remote";
-    [ObservableProperty] private string _keywords  = "";
+    [ObservableProperty] private string _location         = "Remote";
+    [ObservableProperty] private string _keywords         = "";
+    [ObservableProperty] private string _excludeKeywords  = "";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
@@ -62,9 +64,10 @@ public partial class SearchViewModel : ObservableObject
     [ObservableProperty] private bool _indeedApplyOnly       = false;
     [ObservableProperty] private bool _skipAppliedJobs       = true;
 
-    public ICollectionView JobTitleSuggestions { get; }
-    public ICollectionView LocationSuggestions { get; }
-    public ICollectionView KeywordsSuggestions { get; }
+    public ICollectionView JobTitleSuggestions      { get; }
+    public ICollectionView LocationSuggestions      { get; }
+    public ICollectionView KeywordsSuggestions      { get; }
+    public ICollectionView ExcludeKeywordsSuggestions { get; }
 
     public event Action<SearchConfig>? StartRequested;
 
@@ -78,6 +81,7 @@ public partial class SearchViewModel : ObservableObject
         _jobTitle              = s.JobTitle;
         _location              = s.Location;
         _keywords              = s.Keywords;
+        _excludeKeywords       = s.ExcludeKeywords;
         _useLinkedIn           = s.UseLinkedIn;
         _useIndeed             = s.UseIndeed;
         _linkedInEasyApplyOnly = s.LinkedInEasyApplyOnly;
@@ -91,15 +95,18 @@ public partial class SearchViewModel : ObservableObject
         foreach (var h in _history.JobTitles) _jobTitleColl.Add(h);
         foreach (var h in _history.Locations) _locationColl.Add(h);
         foreach (var h in _history.Keywords)  _keywordsColl.Add(h);
+        foreach (var h in _history.ExcludeKeywords)  _excludeKeywordsColl.Add(h);
 
         JobTitleSuggestions = CollectionViewSource.GetDefaultView(_jobTitleColl);
         LocationSuggestions = CollectionViewSource.GetDefaultView(_locationColl);
         KeywordsSuggestions = CollectionViewSource.GetDefaultView(_keywordsColl);
+        ExcludeKeywordsSuggestions = CollectionViewSource.GetDefaultView(_excludeKeywordsColl);
 
         // Filters use the restored field values from the start
         JobTitleSuggestions.Filter = o => Matches(o, JobTitle);
         LocationSuggestions.Filter = o => Matches(o, Location);
         KeywordsSuggestions.Filter = o => Matches(o, Keywords);
+        ExcludeKeywordsSuggestions.Filter = o => Matches(o, ExcludeKeywords);
     }
 
     partial void OnJobTitleChanged(string value)
@@ -119,6 +126,12 @@ public partial class SearchViewModel : ObservableObject
     {
         try { KeywordsSuggestions.Refresh(); }
         catch (Exception ex) { AppLogger.Exception("KeywordsSuggestions.Refresh", ex); }
+    }
+
+    partial void OnExcludeKeywordsChanged(string value)
+    {
+        try { ExcludeKeywordsSuggestions.Refresh(); }
+        catch (Exception ex) { AppLogger.Exception("ExcludeKeywordsSuggestions.Refresh", ex); }
     }
 
     private static bool Matches(object? item, string text) =>
@@ -164,9 +177,10 @@ public partial class SearchViewModel : ObservableObject
         if (UseArbeitnow) sites.Add("arbeitnow");
         if (UseAdzuna)    sites.Add("adzuna");
 
-        var jt = JobTitle.Trim();
-        var lo = Location.Trim();
-        var kw = Keywords.Trim();
+        var jt  = JobTitle.Trim();
+        var lo  = Location.Trim();
+        var kw  = Keywords.Trim();
+        var ekw = ExcludeKeywords.Trim();
 
         AppLogger.Info($"SearchViewModel: Start() — jt='{jt}' sites={string.Join(",", sites)}");
 
@@ -176,6 +190,7 @@ public partial class SearchViewModel : ObservableObject
             JobTitle              = jt,
             Location              = lo,
             Keywords              = kw,
+            ExcludeKeywords       = ekw,
             UseLinkedIn           = UseLinkedIn,
             UseIndeed             = UseIndeed,
             LinkedInEasyApplyOnly = LinkedInEasyApplyOnly,
@@ -187,6 +202,7 @@ public partial class SearchViewModel : ObservableObject
         SearchHistoryService.AddEntry(_history.JobTitles, jt);
         SearchHistoryService.AddEntry(_history.Locations, lo);
         SearchHistoryService.AddEntry(_history.Keywords,  kw);
+        SearchHistoryService.AddEntry(_history.ExcludeKeywords, ekw);
         SearchHistoryService.Save(_history);
 
         try
@@ -194,6 +210,7 @@ public partial class SearchViewModel : ObservableObject
             PushToFront(_jobTitleColl, _history.JobTitles);
             PushToFront(_locationColl, _history.Locations);
             PushToFront(_keywordsColl, _history.Keywords);
+            PushToFront(_excludeKeywordsColl, _history.ExcludeKeywords);
         }
         catch (Exception ex) { AppLogger.Exception("SearchViewModel.PushToFront", ex); }
 
@@ -202,6 +219,7 @@ public partial class SearchViewModel : ObservableObject
             JobTitle              = jt,
             Location              = lo,
             Keywords              = kw,
+            ExcludeKeywords       = ekw,
             Sites                 = sites,
             MinScore              = MinScore,
             MaxJobsPerSite        = MaxJobsPerSite,

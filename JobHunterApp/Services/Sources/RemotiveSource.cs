@@ -31,6 +31,8 @@ public class RemotiveSource : IJobSource
         var arr = JsonNode.Parse(json)?["jobs"]?.AsArray();
         if (arr is null) return jobs;
 
+        var excludeKeywords = SourceHelpers.ExcludeKeywords(config);
+
         foreach (var j in arr)
         {
             if (j is null) continue;
@@ -40,7 +42,7 @@ public class RemotiveSource : IJobSource
                 var company = j["company_name"]?.GetValue<string>() ?? "";
                 if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(company)) continue;
 
-                jobs.Add(new JobListing
+                var job = new JobListing
                 {
                     Id          = $"remotive-{j["id"]?.ToString() ?? Guid.NewGuid().ToString()}",
                     Title       = title.Trim(),
@@ -51,7 +53,10 @@ public class RemotiveSource : IJobSource
                     Source      = "remotive",
                     PostedDate  = j["publication_date"]?.GetValue<string>(),
                     Salary      = j["salary"]?.GetValue<string>(),
-                });
+                };
+
+                if (SourceHelpers.IsNotExcluded(job, excludeKeywords))
+                    jobs.Add(job);
             }
             catch (Exception ex)
             {

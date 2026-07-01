@@ -5,6 +5,7 @@
 | Article | Summary | Updated |
 |---|---|---|
 | [LLM Resume/Job Matching](llm-engineering/llm-resume-job-matching.md) | Categorical vs numeric scoring, requirement decomposition, structured output, resume profile extraction, multi-agent tradeoffs — applied to the Job Hunter scoring pipeline | 2026-07-01 |
+| [WPF Testability, EC2 Deployment, Onboarding UX](llm-engineering/wpf-testability-deployment-onboarding.md) | IDispatcher seam to unblock RunViewModel tests, EC2 Spot for fault-tolerant batch jobs, image tagging over `:latest`, checklist+progress-indicator onboarding pattern | 2026-07-01 |
 
 ## ai-ethics
 
@@ -17,3 +18,9 @@
 | Article | Summary | Updated |
 |---|---|---|
 | [Job Board Scraping Risk (LinkedIn / Indeed)](automation-compliance/job-board-scraping-risk.md) | LinkedIn ban-rate data, hiQ v. LinkedIn case history, compliance-by-architecture pattern (API-first over scraping) | 2026-07-01 |
+
+## competitive-research
+
+| Article | Summary | Updated |
+|---|---|---|
+| [Auto-Apply Tool Landscape](competitive-research/auto-apply-tool-landscape.md) | User opinions on LazyApply/JobRight/Sonara/Jobscan, ghost-job stats, recruiter backlash against bot spam, prioritized improvement ideas for job-hunter | 2026-07-01 |

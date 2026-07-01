@@ -53,21 +53,79 @@ public static class ApiJobSources
         }
     }
 
-    /// <summary>Dedup by exact Id, then by normalized title+company (cross-source repost).</summary>
+    /// <summary>Dedup by: 1) exact ID, 2) exact normalized title+company, 3) Levenshtein distance on title+company (fuzzy cross-source reposts).</summary>
     public static List<JobListing> Dedup(IEnumerable<JobListing> jobs)
     {
         var seenIds  = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seen     = new List<(string normalizedTitle, string normalizedCompany)>();
         var result   = new List<JobListing>();
+
+        const double fuzzyThreshold = 0.85; // 85% similarity = likely duplicate
 
         foreach (var j in jobs)
         {
             if (!seenIds.Add(j.Id)) continue;
-            var key = $"{Norm(j.Title)}|{Norm(j.Company)}";
+
+            var normTitle   = Norm(j.Title);
+            var normCompany = Norm(j.Company);
+            var key         = $"{normTitle}|{normCompany}";
+
             if (key != "|" && !seenKeys.Add(key)) continue;
+
+            if (IsFuzzyDuplicate(normTitle, normCompany, seen, fuzzyThreshold)) continue;
+
+            seen.Add((normTitle, normCompany));
             result.Add(j);
         }
         return result;
+    }
+
+    private static bool IsFuzzyDuplicate(
+        string normalizedTitle, string normalizedCompany,
+        List<(string title, string company)> seen, double threshold)
+    {
+        foreach (var (seenTitle, seenCompany) in seen)
+        {
+            if (normalizedCompany != seenCompany) continue;
+            var similarity = LevenshteinSimilarity(normalizedTitle, seenTitle);
+            if (similarity >= threshold) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Returns 0.0–1.0, where 1.0 is exact match.</summary>
+    private static double LevenshteinSimilarity(string a, string b)
+    {
+        var distance = LevenshteinDistance(a, b);
+        var maxLen   = Math.Max(a.Length, b.Length);
+        return maxLen == 0 ? 1.0 : 1.0 - (double)distance / maxLen;
+    }
+
+    private static int LevenshteinDistance(string a, string b)
+    {
+        var alen = a.Length;
+        var blen = b.Length;
+        if (alen == 0) return blen;
+        if (blen == 0) return alen;
+
+        var prev = new int[blen + 1];
+        var curr = new int[blen + 1];
+
+        for (var j = 0; j <= blen; j++) prev[j] = j;
+
+        for (var i = 1; i <= alen; i++)
+        {
+            curr[0] = i;
+            for (var j = 1; j <= blen; j++)
+            {
+                var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                curr[j] = Math.Min(Math.Min(curr[j - 1] + 1, prev[j] + 1), prev[j - 1] + cost);
+            }
+            (prev, curr) = (curr, prev);
+        }
+
+        return prev[blen];
     }
 
     private static string Norm(string s) =>

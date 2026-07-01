@@ -97,11 +97,192 @@ public class ApiJobSourcesTests
     }
 
     [Fact]
+    public void Dedup_FuzzyMatchesSimilarTitles()
+    {
+        var jobs = new[]
+        {
+            new JobListing { Id = "remotive-1", Title = "Senior Backend Engineer",    Company = "TechCorp" },
+            new JobListing { Id = "adzuna-2",   Title = "Senior Back-End Engineer",   Company = "TechCorp" },   // Levenshtein fuzzy match (just punctuation)
+            new JobListing { Id = "remoteok-3", Title = "Backend Engineer",           Company = "TechCorp" },   // different seniority level
+            new JobListing { Id = "arbeit-4",   Title = "Senior Frontend Engineer",   Company = "TechCorp" },   // different role type
+        };
+        var deduped = ApiJobSources.Dedup(jobs);
+        Assert.Equal(3, deduped.Count); // 1 & 2 are dupes, 3 & 4 are unique
+        Assert.Single(deduped.Where(j => j.Id == "remotive-1"));
+        Assert.DoesNotContain(deduped, j => j.Id == "adzuna-2"); // fuzzy matched and removed
+        Assert.Contains(deduped, j => j.Id == "remoteok-3");
+        Assert.Contains(deduped, j => j.Id == "arbeit-4");
+    }
+
+    [Fact]
     public void Parse_RespectsMaxJobsPerSite()
     {
         var items = string.Join(",", Enumerable.Range(0, 50).Select(i =>
             $$"""{ "id": {{i}}, "title": "Engineer {{i}}", "company_name": "C", "description": "d", "url": "u" }"""));
         var jobs = RemotiveSource.Parse($$"""{ "jobs": [ {{items}} ] }""", Cfg(max: 10));
         Assert.Equal(10, jobs.Count);
+    }
+
+    [Fact]
+    public void Dedup_EmptyList_ReturnsEmpty()
+    {
+        var deduped = ApiJobSources.Dedup([]);
+        Assert.Empty(deduped);
+    }
+
+    [Fact]
+    public void Dedup_SingleJob_ReturnsIt()
+    {
+        var jobs = new[] { new JobListing { Id = "test-1", Title = "Engineer", Company = "Acme" } };
+        var deduped = ApiJobSources.Dedup(jobs);
+        Assert.Single(deduped);
+        Assert.Equal("test-1", deduped[0].Id);
+    }
+
+    [Fact]
+    public void Dedup_ExactDuplicateIds_KeepsFirst()
+    {
+        var jobs = new[]
+        {
+            new JobListing { Id = "remotive-1", Title = "Engineer", Company = "Acme", Description = "first" },
+            new JobListing { Id = "remotive-1", Title = "Engineer", Company = "Acme", Description = "second" },
+        };
+        var deduped = ApiJobSources.Dedup(jobs);
+        Assert.Single(deduped);
+        Assert.Equal("first", deduped[0].Description);
+    }
+
+    [Fact]
+    public void Dedup_DifferentCompaniesSameTitleKeepsBoth()
+    {
+        var jobs = new[]
+        {
+            new JobListing { Id = "remotive-1", Title = "Senior Engineer", Company = "Acme" },
+            new JobListing { Id = "adzuna-2", Title = "Senior Engineer", Company = "Beta" },
+        };
+        var deduped = ApiJobSources.Dedup(jobs);
+        Assert.Equal(2, deduped.Count);
+    }
+
+    [Fact]
+    public void Dedup_SpecialCharactersNormalized()
+    {
+        var jobs = new[]
+        {
+            new JobListing { Id = "remotive-1", Title = "Senior C# Engineer", Company = "Tech-Corp" },
+            new JobListing { Id = "adzuna-2", Title = "Senior C# Engineer", Company = "Tech-Corp" },
+        };
+        var deduped = ApiJobSources.Dedup(jobs);
+        Assert.Single(deduped); // After normalization (removing special chars), they're duplicates
+    }
+
+    [Fact]
+    public void Dedup_LevenshteinJustAboveThreshold_KeepsSecond()
+    {
+        // ~84% similar (1 extra char): "senior engineer" vs "senior engineered"
+        // Levenshtein distance = 1, max length = 15, similarity = 1 - 1/15 = 93% (above 85% threshold)
+        var jobs = new[]
+        {
+            new JobListing { Id = "remotive-1", Title = "Senior Engineer", Company = "TechCorp" },
+            new JobListing { Id = "adzuna-2", Title = "Senior Engineered", Company = "TechCorp" },
+        };
+        var deduped = ApiJobSources.Dedup(jobs);
+        Assert.Single(deduped); // Fuzzy matched, second removed
+    }
+
+    [Fact]
+    public void Dedup_MultipleSourcesPreserveSourceDiversity()
+    {
+        var jobs = new[]
+        {
+            new JobListing { Id = "remotive-1", Title = "Backend Engineer", Company = "Acme" },
+            new JobListing { Id = "remoteok-2", Title = "Frontend Engineer", Company = "Acme" },
+            new JobListing { Id = "adzuna-3", Title = "DevOps Engineer", Company = "Acme" },
+        };
+        var deduped = ApiJobSources.Dedup(jobs);
+        Assert.Equal(3, deduped.Count); // All different roles kept
+    }
+
+    [Fact]
+    public void Dedup_CaseInsensitive()
+    {
+        var jobs = new[]
+        {
+            new JobListing { Id = "remotive-1", Title = "SENIOR ENGINEER", Company = "ACME" },
+            new JobListing { Id = "adzuna-2", Title = "senior engineer", Company = "acme" },
+        };
+        var deduped = ApiJobSources.Dedup(jobs);
+        Assert.Single(deduped);
+    }
+
+    [Fact]
+    public void ExcludeKeywords_Empty_ReturnsEmpty()
+    {
+        var config = Cfg();
+        var keywords = SourceHelpers.ExcludeKeywords(config);
+        Assert.Empty(keywords);
+    }
+
+    [Fact]
+    public void ExcludeKeywords_ParsesSpaceDelimitedTerms()
+    {
+        var config = new SearchConfig { ExcludeKeywords = "contractor remote-only" };
+        var keywords = SourceHelpers.ExcludeKeywords(config);
+        Assert.Equal(2, keywords.Length);
+        Assert.Contains("contractor", keywords);
+        Assert.Contains("remote-only", keywords);
+    }
+
+    [Fact]
+    public void IsNotExcluded_NoExcludes_ReturnsTrue()
+    {
+        var job = new JobListing { Title = "Engineer", Company = "Acme", Description = "builds stuff" };
+        var result = SourceHelpers.IsNotExcluded(job, []);
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsNotExcluded_MatchesTitle_ReturnsFalse()
+    {
+        var job = new JobListing { Title = "Contractor Engineer", Company = "Acme", Description = "contract work" };
+        var excludeKeywords = new[] { "contractor" };
+        var result = SourceHelpers.IsNotExcluded(job, excludeKeywords);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsNotExcluded_MatchesDescription_ReturnsFalse()
+    {
+        var job = new JobListing { Title = "Senior Engineer", Company = "Acme", Description = "remote-only position" };
+        var excludeKeywords = new[] { "remote-only" };
+        var result = SourceHelpers.IsNotExcluded(job, excludeKeywords);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsNotExcluded_MatchesCompany_ReturnsFalse()
+    {
+        var job = new JobListing { Title = "Engineer", Company = "Startup-temp", Description = "exciting role" };
+        var excludeKeywords = new[] { "startup-temp" };
+        var result = SourceHelpers.IsNotExcluded(job, excludeKeywords);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsNotExcluded_NoMatch_ReturnsTrue()
+    {
+        var job = new JobListing { Title = "Senior Engineer", Company = "Acme", Description = "permanent role" };
+        var excludeKeywords = new[] { "contractor", "remote-only" };
+        var result = SourceHelpers.IsNotExcluded(job, excludeKeywords);
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsNotExcluded_WordBoundaryRequired()
+    {
+        var job = new JobListing { Title = "Senior Engineer", Company = "Microsoft", Description = "good opportunity" };
+        var excludeKeywords = new[] { "soft" }; // Should not match "Microsoft"
+        var result = SourceHelpers.IsNotExcluded(job, excludeKeywords);
+        Assert.True(result);
     }
 }

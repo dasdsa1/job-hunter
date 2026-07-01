@@ -1,8 +1,6 @@
 # Job Hunter — Todo
 
 ## Automation
-- [ ] Scheduled headless runs — `--watch`/`SEARCH_INTERVAL_HOURS` so Worker loops without external cron
-- [ ] Result notifications — webhook/email/Slack ping when headless run finishes
 
 ## Accuracy
 
@@ -18,6 +16,8 @@
 - [ ] RunViewModel — extractable orchestration logic (skip-applied, etc.)
 
 ## Done
+- [x] Scheduled headless runs — `SEARCH_INTERVAL_HOURS` so Worker loops without external cron
+- [x] Result notifications — generic webhook POST (Slack/Discord-compatible payload) when headless run finishes
 - [x] CI: dependency/secret scanning (Dependabot, gitleaks)
 - [x] CI: verify Dockerfile builds (caught 3 local breaks that should've failed in CI)
 - [x] CI: add Worker test project (WorkerConfigService env parsing)

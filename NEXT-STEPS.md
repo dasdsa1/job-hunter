@@ -18,11 +18,12 @@
 
 ## Concrete next actionable items
 
-1. **Tests (biggest gap)** — `GeminiService` (JSON parsing, retry/backoff, batch splitting),
-   `ResumeParserService` (PDF/DOCX extraction), more `ApiJobSources.Dedup` edge cases,
-   extract and test `RunViewModel` orchestration (skip-applied, etc.).
-2. **UX** — first-run checklist/wizard; negative filters (exclude companies/keywords);
-   progress bar during Gemini scoring batches.
+1. ~~Tests~~ — done. `GeminiServiceTests`, `ResumeParserServiceTests`, `ApiJobSourcesTests`
+   (dedup/exclude edge cases), `RunViewModelTests` (via the `IDispatcher` seam),
+   `SqliteDeviceStoreTests`, `CvVerificationServiceTests` all exist and pass.
+2. ~~UX — negative filters, scoring progress bar~~ — done (`ExcludeKeywords` in
+   `SearchConfig`/`SearchViewModel`; `ScoringProgressPercent` wired to Gemini batch
+   progress). **Still missing:** first-run checklist/wizard.
 3. **Platform alignment decision (.NET 9 → 8 LTS?)** — platform standard is .NET 8 LTS;
    this repo is on .NET 9. Either down-align or formally isolate it as a module that stays
    on 9, and **record the call in the wiki decision log**. Do not silently mix.

@@ -50,6 +50,26 @@ public partial class SetupViewModel : ObservableObject
 
     public ObservableCollection<FileEntry> Letters { get; } = [];
 
+    /// <summary>Returns true if minimal setup is complete: at least one LLM provider key set + CV file selected and exists.</summary>
+    public bool IsSetupComplete =>
+        HasLlmKeyConfigured && !string.IsNullOrWhiteSpace(CvPath) && File.Exists(CvPath);
+
+    private bool HasLlmKeyConfigured =>
+        !string.IsNullOrWhiteSpace(ApiKey) ||
+        !string.IsNullOrWhiteSpace(GroqApiKey) ||
+        !string.IsNullOrWhiteSpace(OpenRouterApiKey);
+
+    /// <summary>Returns a human-readable list of missing setup items, empty if complete.</summary>
+    public IEnumerable<string> MissingSetupItems
+    {
+        get
+        {
+            if (!HasLlmKeyConfigured) yield return "Add an LLM API key (Gemini, Groq, or OpenRouter)";
+            if (string.IsNullOrWhiteSpace(CvPath)) yield return "Select your CV file";
+            else if (!File.Exists(CvPath)) yield return "CV file not found (check the path)";
+        }
+    }
+
     public SetupViewModel()
     {
         var cfg = FileConfigService.Load();
@@ -304,4 +324,16 @@ public partial class SetupViewModel : ObservableObject
         FileConfigService.Save(cfg);
         SaveStatus = $"Saved at {DateTime.Now:HH:mm:ss}";
     }
+
+    // When LLM keys or CV path change, notify about IsSetupComplete/MissingSetupItems
+    // so UI bindings update in real time.
+    private void NotifySetupComplete()
+    {
+        OnPropertyChanged(nameof(IsSetupComplete));
+        OnPropertyChanged(nameof(MissingSetupItems));
+    }
+    partial void OnApiKeyChanged(string value) => NotifySetupComplete();
+    partial void OnGroqApiKeyChanged(string value) => NotifySetupComplete();
+    partial void OnOpenRouterApiKeyChanged(string value) => NotifySetupComplete();
+    partial void OnCvPathChanged(string value) => NotifySetupComplete();
 }

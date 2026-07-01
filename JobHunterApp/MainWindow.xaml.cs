@@ -10,6 +10,7 @@ public partial class MainWindow : Window
 {
     private readonly SearchViewModel _searchVm = new();
     private readonly RunViewModel    _runVm    = new();
+    private SetupViewModel? _setupVm;
 
     private SetupView?  _setupView;
     private SearchView? _searchView;
@@ -19,7 +20,32 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _searchVm.StartRequested += OnStartRequested;
-        MainTabs.SelectedIndex = 0;
+
+        // First-run detection: if config.json doesn't exist, force Setup tab and disable others
+        var isFirstRun = !File.Exists(AppPaths.ConfigFile);
+        if (isFirstRun) MainTabs.SelectedIndex = 0;
+        if (!isFirstRun)
+        {
+            _setupView ??= new SetupView();
+            UpdateTabsState();
+        }
+
+        MainTabs.SelectionChanged += (s, e) => UpdateTabsState();
+    }
+
+    private void UpdateTabsState()
+    {
+        _setupVm ??= (_setupView as SetupView)?.DataContext as SetupViewModel;
+        if (_setupVm is null) return;
+
+        // Disable Search/Run tabs unless setup is complete
+        if (MainTabs.Items.Count >= 3)
+        {
+            var searchTab = (TabItem)MainTabs.Items[1];
+            var runTab    = (TabItem)MainTabs.Items[2];
+            searchTab.IsEnabled = _setupVm.IsSetupComplete;
+            runTab.IsEnabled    = _setupVm.IsSetupComplete;
+        }
     }
 
     private void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)

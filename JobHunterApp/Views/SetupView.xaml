@@ -11,7 +11,26 @@
             <TextBlock Text="Setup" FontSize="22" FontWeight="Bold"
                        Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
             <TextBlock Text="Configure your API key, CV file, and recommendation letters."
-                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,28"/>
+                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,20"/>
+
+            <!-- Checklist banner: show what's missing or success -->
+            <Border Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1"
+                    CornerRadius="8" Padding="12" Margin="0,0,0,20">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding MissingSetupItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding StringFormat='• {0}'}"
+                                           Foreground="#78350F" FontSize="12" Margin="0,2"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <!-- When complete, show success -->
+                    <TextBlock Text="✓ Setup complete — you can now search for jobs."
+                               Foreground="#15803D" FontSize="12" FontWeight="SemiBold"
+                               Visibility="{Binding IsSetupComplete, Converter={StaticResource BoolToVisConverter}}"/>
+                </StackPanel>
+            </Border>
 
             <!-- Browser -->
             <Border Background="{StaticResource SurfaceBrush}"

@@ -15,6 +15,7 @@ public static class AppPaths
     public static string TailoredCvsDir         => Path.Combine(Root, "tailored-cvs");
     public static string CoverLettersDir        => Path.Combine(Root, "cover-letters");
     public static string ResumeCacheFile        => Path.Combine(Root, "resume_cache.json");
+    public static string DeviceDbFile            => Path.Combine(Root, "jobhunter.db");
 
     public static void EnsureDirectories()
     {

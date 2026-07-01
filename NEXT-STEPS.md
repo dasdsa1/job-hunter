@@ -24,9 +24,11 @@
 2. ~~UX — negative filters, scoring progress bar~~ — done (`ExcludeKeywords` in
    `SearchConfig`/`SearchViewModel`; `ScoringProgressPercent` wired to Gemini batch
    progress). **Still missing:** first-run checklist/wizard.
-3. **Platform alignment decision (.NET 9 → 8 LTS?)** — platform standard is .NET 8 LTS;
-   this repo is on .NET 9. Either down-align or formally isolate it as a module that stays
-   on 9, and **record the call in the wiki decision log**. Do not silently mix.
+3. ~~Platform alignment decision (.NET 9 → 8 LTS?)~~ — resolved: **stay on .NET 9,
+   isolated** (WPF + Playwright are already Windows-desktop-specific, unlike the three
+   ASP.NET Core services; `platform-schemas` targets `net8.0` and is consumable from a
+   `net9.0` app regardless). See decision (n) in
+   [docs/decisions/README.md](../docs/decisions/README.md).
 
 ## Platform integration (first CBIF workflow — done)
 

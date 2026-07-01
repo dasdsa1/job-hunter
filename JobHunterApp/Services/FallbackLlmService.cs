@@ -10,8 +10,9 @@ public class FallbackLlmService(IReadOnlyList<(LlmProvider provider, ILlmService
         await RunAsync(s => s.TestConnectionAsync());
 
     public async Task<Dictionary<string, MatchResult>> MatchJobsAsync(
-        IEnumerable<JobListing> jobs, string resume) =>
-        await RunAsync(s => s.MatchJobsAsync(jobs, resume));
+        IEnumerable<JobListing> jobs, string resume,
+        IProgress<(int current, int total)>? progress = null) =>
+        await RunAsync(s => s.MatchJobsAsync(jobs, resume, progress));
 
     public async Task<string> ExtractProfileAsync(string resume) =>
         await RunAsync(s => s.ExtractProfileAsync(resume));

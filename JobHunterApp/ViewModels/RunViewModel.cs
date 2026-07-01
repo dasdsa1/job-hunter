@@ -41,12 +41,13 @@ public class ReviewRequest(string message) : InteractionRequest
 
 public partial class RunViewModel : ObservableObject
 {
-    [ObservableProperty] private RunStep             _currentStep       = RunStep.Idle;
-    [ObservableProperty] private string              _statusText        = "Ready";
+    [ObservableProperty] private RunStep             _currentStep        = RunStep.Idle;
+    [ObservableProperty] private string              _statusText         = "Ready";
     [ObservableProperty] private bool                _isRunning;
     [ObservableProperty] private InteractionRequest? _pendingInteraction;
     [ObservableProperty] private string              _coverLetterPreview = "";
     [ObservableProperty] private string?             _reportPath;
+    [ObservableProperty] private int                 _scoringProgressPercent;
 
     public ObservableCollection<string>   Log     { get; } = [];
     public ObservableCollection<JobMatch> Jobs    { get; } = [];
@@ -330,13 +331,20 @@ public partial class RunViewModel : ObservableObject
         Dictionary<string, MatchResult> scoreMap;
         try
         {
+            var scoringProgress = new Progress<(int current, int total)>(p =>
+            {
+                ScoringProgressPercent = p.total > 0 ? (100 * p.current) / p.total : 0;
+                StatusText = $"Scoring batch {p.current + 1}/{p.total}";
+            });
             scoreMap = jobsToScore.Count > 0
-                ? await gemini.MatchJobsAsync(jobsToScore, profile)
+                ? await gemini.MatchJobsAsync(jobsToScore, profile, scoringProgress)
                 : [];
+            ScoringProgressPercent = 0;
             AddLog($"✔  Scored {scoreMap.Count} job(s)");
         }
         catch (Exception ex)
         {
+            ScoringProgressPercent = 0;
             AddLog($"Matching failed: {ex.Message}");
             scoreMap = [];
         }

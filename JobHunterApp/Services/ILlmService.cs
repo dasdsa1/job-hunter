@@ -7,7 +7,8 @@ public interface ILlmService
     Task<(bool ok, string message)> TestConnectionAsync();
 
     Task<Dictionary<string, MatchResult>> MatchJobsAsync(
-        IEnumerable<JobListing> jobs, string resume);
+        IEnumerable<JobListing> jobs, string resume,
+        IProgress<(int current, int total)>? progress = null);
 
     /// <summary>Condenses a resume into a short skills/experience summary, once, so callers can
     /// reuse it across many scoring batches instead of resending the full resume text each time.</summary>

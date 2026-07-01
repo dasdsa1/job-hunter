@@ -46,7 +46,8 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
     }
 
     public async Task<Dictionary<string, MatchResult>> MatchJobsAsync(
-        IEnumerable<JobListing> jobs, string profile)
+        IEnumerable<JobListing> jobs, string profile,
+        IProgress<(int current, int total)>? progress = null)
     {
         var jobList = jobs.ToList();
         var result = new Dictionary<string, MatchResult>();
@@ -81,6 +82,7 @@ public abstract class LlmServiceBase(RateLimiter rateLimiter) : ILlmService
         for (var batchIdx = 0; batchIdx < batches.Count; batchIdx++)
         {
             var batch = batches[batchIdx];
+            progress?.Report((batchIdx, batches.Count));
             AppLogger.Info($"Scoring batch {batchIdx + 1}/{batches.Count} ({batch.Count} jobs)");
 
             var snippets = batch.Select(j => new
